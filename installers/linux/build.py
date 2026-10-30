@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 VERSION = '0.4.0'
 FILES = ('backend/exitlag-netd', 'backend/run-tcp-redirect.sh', 'backend/runtime-guard.sh',
          'backend/nft-setup.sh', 'backend/nft-teardown.sh', 'installers/linux/app.py',
-         'installers/linux/run_root.py', 'installers/setup.py', 'LICENSE', 'THIRD_PARTY.md')
+         'installers/linux/run_root.py', 'installers/setup.py', 'LICENSE', 'THIRD_PARTY.md',
+         'docs/provenance-review.md')
 
 
 def populate(target):

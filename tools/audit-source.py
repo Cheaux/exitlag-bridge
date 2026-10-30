@@ -64,7 +64,7 @@ def audit(root, revision='HEAD'):
     commits = git(root, 'rev-list', '--all').decode().splitlines()
     for commit in commits:
         emails = git(root, 'show', '-s', '--format=%ae%n%ce', commit).decode().splitlines()
-        if any(not email.endswith('@users.noreply.github.com') for email in emails):
+        if any(not (email.endswith('@users.noreply.github.com') or email == 'noreply@github.com') for email in emails):
             issues.append({'commit': commit[:12], 'finding': 'non-noreply author or committer email'})
     return {'files_checked': len(names), 'commits_checked': len(commits), 'findings': issues,
             'passed': not issues, 'scope': 'committed files and reachable email metadata; manual review still required'}

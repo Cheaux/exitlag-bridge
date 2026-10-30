@@ -4,6 +4,22 @@ here="$(cd -- "$(dirname -- "$0")" && pwd)"
 source="$here/.."
 out="${EXITLAG_MAC_OUTPUT:-$here/dist}"
 mkdir -p "$out"
+app_identity="${EXITLAG_APP_SIGN_IDENTITY:-}"
+installer_identity="${EXITLAG_INSTALLER_SIGN_IDENTITY:-}"
+notary_profile="${EXITLAG_NOTARY_PROFILE:-}"
+if { [ -n "$app_identity" ] && [ -z "$installer_identity" ]; } || { [ -z "$app_identity" ] && [ -n "$installer_identity" ]; }; then
+  echo 'Provide both Developer ID Application and Installer identities, or neither.' >&2; exit 1
+fi
+if [ -n "$notary_profile" ] && [ -z "$app_identity" ]; then
+  echo 'Notarization requires Developer ID signing identities.' >&2; exit 1
+fi
+build_package() {
+  if [ -n "$installer_identity" ]; then
+    /usr/bin/pkgbuild --sign "$installer_identity" "$@"
+  else
+    /usr/bin/pkgbuild "$@"
+  fi
+}
 app="$here/build/ExitLag Bridge.app"
 payload="$here/package/payload"
 root="$payload/Library/PrivilegedHelperTools/local.cheaux.ExitLagRouting"
@@ -22,6 +38,8 @@ done
 /usr/bin/ditto "$source/../installers/payloads" "$app/Contents/Resources/bridge/payloads"
 /usr/bin/ditto "$source/../LICENSES" "$app/Contents/Resources/LICENSES"
 /bin/cp "$source/../LICENSE" "$source/../THIRD_PARTY.md" "$app/Contents/Resources/"
+mkdir -p "$app/Contents/Resources/docs"
+/bin/cp "$source/../docs/provenance-review.md" "$app/Contents/Resources/docs/"
 /usr/bin/find "$app" -name __pycache__ -type d -exec /bin/rm -rf '{}' +
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -107,11 +125,14 @@ if [ -d /Applications/ExitLag.app ]; then
 fi
 POST
 /bin/chmod 755 "$here/package/scripts/preinstall" "$here/package/scripts/postinstall"
+if [ -n "$app_identity" ]; then
+  python3 "$here/sign_payload.py" "$payload" --identity "$app_identity"
+fi
 /usr/bin/pkgbuild --analyze --root "$payload" "$here/package/components.plist"
 /usr/libexec/PlistBuddy -c 'Add :0:BundleIsRelocatable bool false' "$here/package/components.plist"
 /usr/libexec/PlistBuddy -c 'Set :0:BundleIsVersionChecked false' "$here/package/components.plist"
-/usr/bin/pkgbuild --root "$payload" --component-plist "$here/package/components.plist" --scripts "$here/package/scripts" --identifier local.cheaux.ExitLagMac.Setup --version 0.4 --install-location / "$out/ExitLag Mac Setup.pkg"
-/usr/bin/ditto "$app" "$out/ExitLag Bridge.app"
+build_package --root "$payload" --component-plist "$here/package/components.plist" --scripts "$here/package/scripts" --identifier local.cheaux.ExitLagMac.Setup --version 0.4 --install-location / "$out/ExitLag Mac Setup.pkg"
+/usr/bin/ditto "$payload/Applications/ExitLag Bridge.app" "$out/ExitLag Bridge.app"
 mkdir -p "$here/package/uninstall"
 cat > "$here/package/uninstall/preinstall" <<'UNINSTALL'
 #!/bin/bash
@@ -138,4 +159,8 @@ if [ -d "$app" ]; then /bin/rm -rf "$app"; fi
 echo 'ExitLag Bridge was removed. Your account data and private Wine environment were preserved.'
 UNINSTALL
 chmod 755 "$here/package/uninstall/preinstall"
-/usr/bin/pkgbuild --nopayload --scripts "$here/package/uninstall" --identifier local.cheaux.ExitLagMac.Uninstall --version 0.4 "$out/ExitLag Bridge Uninstall.pkg"
+build_package --nopayload --scripts "$here/package/uninstall" --identifier local.cheaux.ExitLagMac.Uninstall --version 0.4 "$out/ExitLag Bridge Uninstall.pkg"
+
+if [ -n "$notary_profile" ]; then
+  python3 "$here/notarize.py" --profile "$notary_profile" "$out/ExitLag Mac Setup.pkg" "$out/ExitLag Bridge Uninstall.pkg"
+fi

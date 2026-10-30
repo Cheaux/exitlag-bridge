@@ -74,3 +74,7 @@ installers/payloads/
 
 /build/
 installers/bridge_setup/__pycache__/
+
+# Python caches at any source depth are local build products.
+**/__pycache__/
+*.pyc
