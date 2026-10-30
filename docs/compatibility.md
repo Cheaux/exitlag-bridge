@@ -3,13 +3,25 @@
 An ExitLag dashboard entry does not prove traffic is being relayed. Keep user
 reports, automated tests and observed game connections distinct.
 
-| Platform / game | Status | Evidence and limits |
-|---|---|---|
-| Linux / WoW Classic Era | User-verified gameplay | Maintainer reports working gameplay with the original Linux bridge. This does not establish every distribution or the complete new graphical installer flow. |
-| macOS Apple Silicon / WoW Classic Era | Verified gameplay | Actual bidirectional world-server traffic through ExitLag and stable gameplay. |
-| macOS Apple Silicon / WoW Forever | Partial | Actual relayed character-selection connection. World entry was unavailable before game release. |
-| Ubuntu 22.04 and 24.04 / packaged helper | Automated verification | Clean Wine/WMI setup, installed first-run UI, ownership checks, UID-scoped routing startup, expired/removed leases, parent-exit cleanup and account-preserving removal. CI uses no vendor client or account. |
-| Other games, architectures and distributions | Untested | Reports and pull requests are welcome. A working dashboard alone is insufficient evidence. |
+| Game | Platform | Recorded result | Tested scope |
+|---|---|---|---|
+| World of Warcraft Classic Era | Linux | Working — maintainer verified | Real gameplay with the original Linux bridge. |
+| World of Warcraft Classic Era | macOS / Apple Silicon | Working | Stable gameplay and bidirectional world-server traffic through ExitLag. |
+| World of Warcraft Forever | macOS / Apple Silicon | Partial | Relayed character-selection connection; world entry was unavailable before release. |
+| Minecraft Java Edition | Native Linux | Unstable | Traffic was relayed, but sessions disconnected; not considered working gameplay. |
+| Dota 2 | Native Linux | Detection only | Game/UDP traffic recognized; relay steering was not established. |
+| Tibia | Native Linux | Detection only | In-world flows recognized; no redirect was supplied in the recorded test. |
+| Other games | Linux / macOS | Untested | Community reports and pull requests are welcome. |
+
+Automated packaging checks are separate from gameplay: Ubuntu 22.04 and 24.04
+cover clean Wine/WMI setup, installed first-run UI, ownership checks, UID-scoped
+routing startup, removed/expired leases, parent-exit cleanup and account-preserving
+removal. CI uses no official client or account.
+
+Minecraft, Dota 2 and Tibia results come from earlier native Linux experiments.
+Their source reports establish the scope above, not current-version support.
+The Minecraft tests carried real relay traffic and then disconnected; detection
+or byte counters alone must not be relabelled as working gameplay.
 
 Mac live-game testing used Apple Silicon, macOS 27.2 and Wine 11.17 Staging.
 The current Mac adapter recognizes Classic Era and Forever at the standard WoW

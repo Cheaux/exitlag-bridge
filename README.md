@@ -36,6 +36,24 @@ and follow the [installation instructions](installers/README.md). The official
 Windows installer is downloaded separately by each user. The Mac launcher opens
 the official dashboard directly and keeps optional status in the menu bar.
 
+## Games tested
+
+| Game | Platform | Recorded result | Tested scope |
+|---|---|---|---|
+| World of Warcraft Classic Era | Linux | Working — maintainer verified | Real gameplay with the original Linux bridge. |
+| World of Warcraft Classic Era | macOS / Apple Silicon | Working | Stable gameplay and bidirectional world-server traffic through ExitLag. |
+| World of Warcraft Forever | macOS / Apple Silicon | Partial | Relayed character-selection connection; world entry was unavailable before release. |
+| Minecraft Java Edition | Native Linux | Unstable | Traffic was relayed, but sessions disconnected; not considered working gameplay. |
+| Dota 2 | Native Linux | Detection only | Game/UDP traffic recognized; relay steering was not established. |
+| Tibia | Native Linux | Detection only | In-world flows recognized; no redirect was supplied in the recorded test. |
+| Other games | Linux / macOS | Untested | Community reports and pull requests are welcome. |
+
+These are the recorded results, not a guarantee for every OS, client build or
+transport. The Minecraft, Dota 2 and Tibia entries describe earlier Linux
+experiments; they have not been revalidated with the new packaged installer.
+See [compatibility and evidence](docs/compatibility.md) for limits and use the
+[game report template](.github/ISSUE_TEMPLATE/game-compatibility.yml) for new tests.
+
 ## macOS compatibility bridge
 
 An experimental native Mac launcher and TCP routing backend now live in [`macos/`](macos/README.md). The launcher opens the official ExitLag dashboard directly and keeps optional routing status in the menu bar. Classic Era world routing and Forever character-selection routing have been validated. The current Mac adapter is WoW-specific; it does not implement UDP or IPv6 routing.
