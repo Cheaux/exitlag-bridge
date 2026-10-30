@@ -1,0 +1,6 @@
+# Preserve upstream legal notices verbatim, including RST heading underlines.
+LICENSES/python-standalone/** -whitespace
+# Preserve upstream notice text and patch context verbatim.
+LICENSES/** -whitespace
+LICENSES/**/*.rst conflict-marker-size=128
+wine-wbemprox/patches/*.patch -whitespace

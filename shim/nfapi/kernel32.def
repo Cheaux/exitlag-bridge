@@ -1,0 +1,23 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+    CloseHandle
+    CreateFileW
+    FlushFileBuffers
+    GetCurrentProcessId
+    GetCurrentThreadId
+    GetEnvironmentVariableW
+    GetModuleHandleW
+    GetSystemTimeAsFileTime
+    GetTickCount64
+    VirtualQuery
+    VirtualProtect
+    OutputDebugStringA
+    WriteFile
+    QueryFullProcessImageNameW
+    OpenProcess
+    Sleep
+    ReadFile
+    DeleteFileW
+    CreateThread
+    MoveFileExW
+    GetFileSizeEx

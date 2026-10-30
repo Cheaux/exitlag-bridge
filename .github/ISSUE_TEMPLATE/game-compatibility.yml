@@ -1,0 +1,43 @@
+name: Game compatibility
+description: Report a precisely scoped game test
+title: "[Compatibility] Game — OS"
+labels: []
+body:
+  - type: input
+    id: game
+    attributes:
+      label: Game and build
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS version, CPU architecture, native/Wine/Proton, ExitLag version and Wine version. Use placeholders for personal paths.
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Working within the scope below
+        - Partially working
+        - Broken
+        - Untested or needs implementation
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Tested scope and evidence
+      description: State which of launch, login, character selection, gameplay, real relay traffic, restart and cleanup were verified. Include short reproduction steps; redact diagnostics.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I removed credentials, tokens, account details, personal paths and unrelated private data.
+          required: true

@@ -1,0 +1,4 @@
+Upstream notices from astral-sh/python-build-standalone release 20261026
+Commit: fa506e0858ac9f2cc5b289c137b888a2aa24d1ee
+The embedded CPython binaries are unmodified upstream distributions.
+These upstream notices cover its runtime dependencies; applicability varies by platform.

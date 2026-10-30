@@ -1,0 +1,76 @@
+# Proprietary application copies, the Wine prefix, and vendor trees are not versioned.
+runtime/app-untouched/
+runtime/app-shim/
+runtime/prefix/
+runtime/prefix-game/
+runtime/prefix-overrides/
+runtime/analysis/
+vendor/
+wine-wbemprox/build64/
+wine-wbemprox/runtime-staging/
+# Large raw Wine traces; summaries, metadata, nfapi call logs and screenshots stay.
+runtime/logs/**/wine.log
+runtime/logs/*-wine.log
+*.exe.so
+*.obj
+*.res
+
+vendor/blizzard/
+tools/nfapi.dll
+tools/*.obj
+
+# Local test fixtures and run logs (absolute paths, machine-specific)
+runtime/test-bin/
+runtime/test-external-process.map
+runtime/logs/harden-*/
+runtime/logs/netd-*.log
+runtime/prefix-ext-*/
+runtime/prefix-external*/
+runtime/logs/extprefix-*/
+runtime/logs/extval*.log
+tools/external-probe/*.obj
+tools/external-probe/*.lib
+
+# macOS port's local toolchain products and Python caches
+macos/build/
+macos/__pycache__/
+runtime/proton-compat/
+runtime/proton-validation.map
+runtime/logs/proton-*.log
+
+# Build outputs (regenerate with the matching build.sh)
+shim/nfapi/build/
+shim/nfextlag/build/
+tests/*.exe
+tests/*.obj
+tests/nfapi.dll
+tests/external-probe/*.exe
+tests/external-probe/*.obj
+tests/external-probe/*.lib
+tests/fakegame/*.exe
+research/probes/*.exe
+research/probes/*.obj
+
+macos/app/build/
+macos/app/package/
+macos/app/dist/
+
+.DS_Store
+*.log
+*.dmp
+*.reg
+*.db
+*.token
+.env
+.env.*
+*.key
+*.pem
+
+# Build locally; do not commit machine-specific compiled helpers.
+/backend/exitlag-netd
+
+installers/**/__pycache__/
+installers/payloads/
+
+/build/
+installers/bridge_setup/__pycache__/

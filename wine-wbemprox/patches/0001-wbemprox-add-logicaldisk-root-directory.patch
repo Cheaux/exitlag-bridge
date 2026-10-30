@@ -1,0 +1,146 @@
+diff --git a/dlls/wbemprox/builtin.c b/dlls/wbemprox/builtin.c
+index 7aabd54..93d4d70 100644
+--- a/dlls/wbemprox/builtin.c
++++ b/dlls/wbemprox/builtin.c
+@@ -216,6 +216,11 @@ static const struct column col_logicaldisk[] =
+     { L"VolumeName",         CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"VolumeSerialNumber", CIM_STRING|COL_FLAG_DYNAMIC },
+ };
++static const struct column col_logicaldiskrootdirectory[] =
++{
++    { L"GroupComponent", CIM_REFERENCE|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"PartComponent",  CIM_REFERENCE|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++};
+ static const struct column col_logicaldisktopartition[] =
+ {
+     { L"Antecedent", CIM_REFERENCE|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+@@ -798,6 +803,11 @@ struct record_logicaldisk
+     const WCHAR *volumename;
+     const WCHAR *volumeserialnumber;
+ };
++struct record_logicaldiskrootdirectory
++{
++    const WCHAR *groupcomponent;
++    const WCHAR *partcomponent;
++};
+ struct record_logicaldisktopartition
+ {
+     const WCHAR *antecedent;
+@@ -3047,6 +3057,109 @@ static enum fill_status fill_logicaldisk( struct table *table, const struct expr
+     return status;
+ }
+ 
++static WCHAR *get_logicaldisk_root_directory_ref( const WCHAR *logicaldisk_ref, WCHAR drive )
++{
++    static const WCHAR directory_path_fmt[] = L"Win32_Directory.Name=\"%c:\\\\\"";
++    const WCHAR *separator = wcschr( logicaldisk_ref, ':' );
++    WCHAR *ret;
++    size_t prefix_len, len;
++
++    if (!separator) return NULL;
++    prefix_len = separator - logicaldisk_ref + 1;
++    len = prefix_len + ARRAY_SIZE(directory_path_fmt);
++    if (!(ret = malloc( len * sizeof(*ret) ))) return NULL;
++
++    memcpy( ret, logicaldisk_ref, prefix_len * sizeof(*ret) );
++    swprintf( ret + prefix_len, len - prefix_len, directory_path_fmt, drive );
++    return ret;
++}
++
++static struct association *get_logicaldiskrootdirectory_pairs( UINT *count )
++{
++    struct association *ret = NULL;
++    struct query *query;
++    VARIANT device_id;
++    UINT i;
++
++    *count = 0;
++    if (!(query = create_query( WBEMPROX_NAMESPACE_CIMV2 ))) return NULL;
++    if (parse_query( WBEMPROX_NAMESPACE_CIMV2, L"SELECT * FROM Win32_LogicalDisk",
++                     &query->view, &query->mem ) != S_OK) goto done;
++    if (execute_view( query->view ) != S_OK) goto done;
++    TRACE("Win32_LogicalDisk returned %u rows\n", query->view->result_count);
++
++    if (!(ret = calloc( query->view->result_count, sizeof(*ret) ))) goto done;
++    for (i = 0; i < query->view->result_count; i++)
++    {
++        VariantInit( &device_id );
++        ret[i].ref = get_ref( query->view, i );
++        if (!ret[i].ref || get_propval( query->view, i, L"DeviceId", &device_id, NULL, NULL ) != S_OK ||
++            V_VT(&device_id) != VT_BSTR || !V_BSTR(&device_id) || !V_BSTR(&device_id)[0])
++        {
++            TRACE("failed to read logical disk reference or DeviceId for row %u\n", i);
++            VariantClear( &device_id );
++            free_associations( ret, i + 1 );
++            ret = NULL;
++            goto done;
++        }
++        ret[i].ref2 = get_logicaldisk_root_directory_ref( ret[i].ref, V_BSTR(&device_id)[0] );
++        if (!ret[i].ref2)
++        {
++            TRACE("failed to build root directory reference for row %u\n", i);
++            VariantClear( &device_id );
++            free_associations( ret, i + 1 );
++            ret = NULL;
++            goto done;
++        }
++        TRACE("association %u: %s -> %s\n", i, debugstr_w(ret[i].ref), debugstr_w(ret[i].ref2));
++        VariantClear( &device_id );
++    }
++    *count = query->view->result_count;
++
++done:
++    free_query( query );
++    return ret;
++}
++
++static enum fill_status fill_logicaldiskrootdirectory( struct table *table, const struct expr *cond )
++{
++    struct record_logicaldiskrootdirectory *rec;
++    UINT i, row = 0, offset = 0, count = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++    struct association *assoc;
++
++    if (!(assoc = get_logicaldiskrootdirectory_pairs( &count ))) return FILL_STATUS_FAILED;
++    if (!count)
++    {
++        free_associations( assoc, count );
++        return FILL_STATUS_UNFILTERED;
++    }
++    if (!resize_table( table, count, sizeof(*rec) ))
++    {
++        free_associations( assoc, count );
++        return FILL_STATUS_FAILED;
++    }
++
++    for (i = 0; i < count; i++)
++    {
++        rec = (struct record_logicaldiskrootdirectory *)(table->data + offset);
++        rec->groupcomponent = assoc[i].ref;
++        rec->partcomponent  = assoc[i].ref2;
++        if (!match_row( table, row, cond, &status ))
++        {
++            free_row_values( table, row );
++            continue;
++        }
++        offset += sizeof(*rec);
++        row++;
++    }
++    free( assoc );
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++
+ static struct association *get_logicaldisktopartition_pairs( UINT *count )
+ {
+     struct association *ret = NULL;
+@@ -4964,6 +5077,7 @@ static struct table cimv2_builtin_classes[] =
+     { L"Win32_IP4RouteTable", C(col_ip4routetable), 0, 0, NULL, fill_ip4routetable },
+     { L"Win32_LocalTime", C(col_localtime), 0, 0, NULL, fill_localtime },
+     { L"Win32_LogicalDisk", C(col_logicaldisk), 0, 0, NULL, fill_logicaldisk },
++    { L"Win32_LogicalDiskRootDirectory", C(col_logicaldiskrootdirectory), 0, 0, NULL, fill_logicaldiskrootdirectory },
+     { L"Win32_LogicalDiskToPartition", C(col_logicaldisktopartition), 0, 0, NULL, fill_logicaldisktopartition },
+     { L"Win32_NetworkAdapter", C(col_networkadapter), 0, 0, NULL, fill_networkadapter },
+     { L"Win32_NetworkAdapterConfiguration", C(col_networkadapterconfig), 0, 0, NULL, fill_networkadapterconfig },

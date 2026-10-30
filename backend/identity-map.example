@@ -1,0 +1,21 @@
+# Exact process-identity translations used by exitlag-netd --identity-map.
+# Format: SOURCE<TAB>WINDOWS_PATH (the separator must be one literal tab).
+#
+# SOURCE may be one of:
+#   - the canonical absolute path from /proc/<pid>/exe, for a NATIVE Linux game;
+#   - an exact .exe argv token, for a process that owns its own socket; or
+#   - wineprefix:<absolute prefix dir>, matched against the WINEPREFIX of the
+#     process owning the socket. This is the ONLY form that works for a Wine or
+#     Proton game: at SYN time the socket is held by that prefix's wineserver,
+#     whose /proc exe and argv are identical for every prefix on the machine.
+#     It maps everything in that prefix to one identity, which is correct for
+#     Proton (one prefix per title).
+#
+# Examples are commented out because nonexistent absolute sources intentionally
+# fail startup. Copy this file and uncomment/edit only paths installed locally.
+# native Linux game (source = /proc/<pid>/exe)
+# /opt/my-native-game/bin/game	C:\Games\Supported Game\game.exe
+# another Wine prefix
+# wineprefix:/home/USER/prefixes/mygame	C:\Games\Supported Game\Game.exe
+# Proton (one prefix per app id)
+# wineprefix:/home/USER/.local/share/Steam/steamapps/compatdata/12345/pfx	C:\Games\Supported Game\Game.exe
