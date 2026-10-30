@@ -170,6 +170,13 @@ def ancestry(pid, limit=6):
     return chain
 
 
+def endpoint_port(endpoint):
+    try:
+        return int(endpoint.rsplit(":", 1)[1])
+    except (IndexError, ValueError):
+        return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
@@ -191,15 +198,9 @@ def main():
         if not args.all and not args.pid:
             if INFRA_EXE.search(info["exe"]):
                 continue
-            socks = [s for s in socks
-                     if not any(p in s[2] for p in (f":{q}" for q in INFRA_PORTS))]
+            socks = [s for s in socks if endpoint_port(s[2]) not in INFRA_PORTS]
             if args.min_port:
-                def remote_port(s):
-                    try:
-                        return int(s[2].rsplit(":", 1)[1])
-                    except (IndexError, ValueError):
-                        return 0
-                socks = [s for s in socks if remote_port(s) >= args.min_port]
+                socks = [s for s in socks if endpoint_port(s[2]) >= args.min_port]
             if not socks:
                 continue
         chain = ancestry(pid)

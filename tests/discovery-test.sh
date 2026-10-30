@@ -14,6 +14,10 @@ cleanup(){ set +e; [[ -n "${launcher_pid:-}" ]] && kill -- -"$launcher_pid" 2>/d
            [[ -n "${srv_pid:-}" ]] && kill "$srv_pid" 2>/dev/null; rm -rf "$work"; }
 trap cleanup EXIT
 
+python3 "$repo_root/tests/test_discovery_filters.py" \
+    && ok "infrastructure ports match exactly, including IPv6" \
+    || bad "port filters" "regression checks failed"
+
 # A local server to connect to, so the "client" owns a real socket.
 python3 - "$work/port" <<'PY' &
 import socket, sys
