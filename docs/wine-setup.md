@@ -38,7 +38,7 @@ staged Wine via `WINELOADER`.
 
 **Reversible:** delete `wine-wbemprox/runtime-staging/` (and `vendor/`). The
 system Wine is never written to. **Attribution:** the patch is a diff against
-Wine, which is LGPL-2.1-or-later — see the private release audit.
+Wine, which is LGPL-2.1-or-later — see `THIRD_PARTY.md` and `docs/provenance-review.md`.
 
 ## 2. Missing-import crash guards
 

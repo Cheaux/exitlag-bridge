@@ -84,7 +84,7 @@ stage3a-probe.py, stage3a-discriminate.py
 
 Wine prefixes, session logs, captured evidence, and checkpoint backups. Almost
 all of it is generated and much is specific to this machine. See
-the private release audit before publishing anything from here.
+`THIRD_PARTY.md` and `docs/provenance-review.md` before publishing.
 
 ## What the runtime must never depend on
 
