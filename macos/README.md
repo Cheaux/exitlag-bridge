@@ -14,7 +14,7 @@ Opening **ExitLag Bridge.app** opens the actual ExitLag dashboard. The bridge ru
 
 The Mac backend currently handles IPv4 TCP only. UDP and IPv6 game redirection are not implemented. Native process attribution uses exact executable paths; a matching game label in the dashboard alone does not prove routing.
 
-Validation was performed on Apple Silicon with macOS 27.2 and Wine 11.17 Staging. Other hardware, OS versions and long-duration sessions need testing. Full Mac reboot and sleep/wake recovery have not been exercised with the launcher.
+The downloadable Mac package is an arm64 build for Apple Silicon. Validation was performed with macOS 27.2 and Wine 11.17 Staging. Other hardware, OS versions and long-duration sessions need testing. Full Mac reboot and sleep/wake recovery have not been exercised with the launcher.
 
 ## Current installation scope
 

@@ -22,7 +22,7 @@ helper, so end users do not need Command Line Tools or Homebrew. Wine downloads
 and the vendor wizard run as the ordinary user. Apple Silicon also needs Rosetta;
 install it through Apple's own system prompt and review Apple's terms yourself.
 
-The beta supports one installation user, macOS 15+, and the standard
+The downloadable Mac beta is arm64 for Apple Silicon. It supports one installation user, macOS 15+, and the standard
 `/Applications/World of Warcraft` paths for Classic Era and Forever. Current
 live-game evidence is Apple Silicon/macOS 27.2. Intel builds, reboot/sleep
 recovery, and Forever world entry still need validation. Forever has only been

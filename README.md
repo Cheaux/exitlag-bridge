@@ -8,27 +8,33 @@ through ExitLag's relays on Linux.
 > This project contains no ExitLag code and redistributes no ExitLag files.
 > You need the official client and your own valid account and subscription.
 
-ExitLag's Windows client intercepts packets through a Windows kernel driver.
-This project runs the real client under Wine and replaces **only** that
-interception layer with a native Linux one built on nftables and NFQUEUE.
+ExitLag's Windows client normally intercepts game connections through a Windows
+filtering driver. This bridge supplies the interception and steering layer on
+Linux/macOS while keeping the official client for login, route selection and
+relay transport.
+
+## How traffic flows
 
 ```text
-ExitLag control plane            this project (data plane)
-(official, unmodified)           nftables / NFQUEUE
-login, subscription,      <-->   seeing packets, attributing them to a
-relay selection, route           process, and applying the redirect that
-optimisation, the UI             ExitLag asks for
+Game <-> our native bridge <-> official ExitLag client under Wine
+                                  <-> ExitLag relay(s) <-> game server
 ```
 
-## What this is not
+For a recognized game connection, our bridge asks the official client's routing
+callback where that connection should go. The proven path returns a local ExitLag
+proxy endpoint. We steer the game's traffic into that proxy, and the official
+client carries it through its selected relay route. Return traffic follows the
+same chain back to the game.
 
-- **Not a replacement for ExitLag** — it steers packets; it never talks to
-  ExitLag's relays itself.
-- **Not a way around anything** — it does not bypass login, subscription checks,
-  or server-side authorisation, and it cannot make an unlicensed client work.
-- **Not a distribution channel** — no ExitLag binaries, resources or data are
-  included here, and none will be.
-- ExitLag's own interface remains the route control panel. The Mac launcher adds an optional status window.
+The complete setup uses ExitLag's service and relays. This project implements the
+native interception, process attribution and traffic steering; it does not
+independently implement ExitLag's remote route API or relay protocol. A valid
+official client, account and subscription are required.
+
+Download experimental installers from [Releases](https://github.com/Cheaux/exitlag-bridge/releases)
+and follow the [installation instructions](installers/README.md). The official
+Windows installer is downloaded separately by each user. The Mac launcher opens
+the official dashboard directly and keeps optional status in the menu bar.
 
 ## macOS compatibility bridge
 
@@ -69,7 +75,7 @@ vendor endorsement or legal approval.
 | Build | `clang-cl`, `lld-link`, `llvm-dlltool`, `llvm-readobj`, a C compiler, GNU make |
 
 Developed and verified on Arch Linux (kernel 7.2, nftables 1.1.7) with Wine
-11.17 Staging. Other distributions should work. Other Wine versions may need the
+11.17 Staging. Other distributions are untested. Other Wine versions may need the
 crash-guard set re-checked — `tools/check-exitlag-abi.sh` tells you whether they
 do.
 
