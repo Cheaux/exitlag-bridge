@@ -1,0 +1,19 @@
+name: Source privacy
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check privacy regressions and committed source
+        run: |
+          python3 tests/test_source_audit.py
+          python3 tools/audit-source.py

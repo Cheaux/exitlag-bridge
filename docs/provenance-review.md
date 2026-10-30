@@ -13,8 +13,9 @@ Review date: 2026-10-30. This is a technical source audit, not legal clearance.
 | Embedded Python | Unmodified pinned upstream runtime | Upstream notices are retained in `LICENSES/python-standalone/`. |
 
 The rule logging code explicitly references `nfdriver_data.h` version 1.7.7.1
-and a 643-byte packed rule structure. That contradicts a blanket claim that every
-layout was established solely from import/export tables. Available source history
+and a 643-byte packed rule structure. That reference means import/export inspection alone is insufficient evidence
+for the blanket derivation claim. It does not establish that an SDK
+implementation was copied. Available source history
 starts from an imported snapshot; it does not reconstruct earlier authoring.
 No copied vendor SDK source package or header file is present, but that observation
 alone does not establish independent derivation of every declaration.
