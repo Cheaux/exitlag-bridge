@@ -27,16 +27,25 @@ cp "$(readlink -f "$(command -v python3)")" "$work/bin/game-launcher"
 cp "$(readlink -f "$(command -v python3)")" "$work/bin/game-client"
 cat > "$work/launcher.py" <<EOF
 import subprocess, time
-subprocess.Popen(["$work/bin/game-client", "$work/client.py", "$port"])
+subprocess.Popen(["$work/bin/game-client", "$work/client.py", "$port", "$work/client.ready"])
 time.sleep(60)
 EOF
 cat > "$work/client.py" <<'EOF'
-import socket, sys, time
-s=socket.create_connection(("127.0.0.1", int(sys.argv[1]))); time.sleep(60)
+import os, socket, sys, time
+s=socket.create_connection(("127.0.0.1", int(sys.argv[1])))
+with open(sys.argv[2], "w") as ready: ready.write(str(os.getpid()))
+time.sleep(60)
 EOF
 setsid "$work/bin/game-launcher" "$work/launcher.py" >/dev/null 2>&1 &
 launcher_pid=$!
-sleep 3
+# Wait for the actual network-owning child, not a timing assumption about a
+# newly copied interpreter starting on a busy CI runner.
+for _ in $(seq 1 100); do
+    [[ -s "$work/client.ready" ]] && break
+    kill -0 "$launcher_pid" 2>/dev/null || break
+    sleep 0.1
+ done
+[[ -s "$work/client.ready" ]] || { bad "client ready" "fixture did not connect"; exit 1; }
 
 # Match the REMOTE endpoint: the test server also holds a socket on this port
 # as its local address, and would otherwise be picked instead of the client.
