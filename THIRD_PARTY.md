@@ -9,7 +9,7 @@ where redistribution status is not certain — says so instead of guessing.
 | Component | Where | Licence | Status |
 |---|---|---|---|
 | Wine (`wbemprox` patch) | `wine-wbemprox/patches/` | LGPL-2.1-or-later | distributable with notice |
-| NetFilter SDK `nfapi` ABI | `shim/nfapi/nfapi_stub.cpp`, `shim/nfapi/*.def` | unknown | **uncertain — see below** |
+| `nfapi`-compatible interface | `shim/nfapi/nfapi_stub.cpp`, `shim/nfapi/*.def` | first-party implementation; interface provenance note below | no commercial SDK implementation bundled |
 | libmnl | linked by `backend/exitlag-netd` | LGPL-2.1-or-later | not redistributed; system library |
 | ExitLag client | not present | proprietary | **never redistributed** |
 | Zig compiler runtime | Selected builtins may be linked into the Windows shim | MIT | notice retained in `LICENSES/Zig-MIT.txt` |
@@ -32,8 +32,11 @@ Upstream: <https://gitlab.winehq.org/wine/wine>
 
 ## NetFilter SDK — the `nfapi` interface
 
-**This is the one item whose redistribution status is not settled, and it should
-be reviewed by someone qualified before this project is published.**
+This is an interoperability implementation, not a distribution of the commercial
+NetFilter SDK. The built shim imports standard Windows/Wine system libraries;
+Linux filtering uses nftables/NFQUEUE and libmnl, while macOS uses PF and native
+socket routing. The project's `nfextlag.sys` is a presence-only stub, not the
+vendor's filtering driver.
 
 What is present:
 
@@ -55,8 +58,9 @@ independently, and this document does not grant legal clearance.
 
 The vendor's [license](https://www.netfiltersdk.com/license.html) distinguishes
 executable redistribution from substantially derived source redistribution.
-Whether that restriction applies to this interoperability shim remains an open
-review question. Renaming declarations or generating equivalent text would not
+Matching interface names and layouts alone does not establish that this
+restriction applies to an independent interoperability implementation. This audit
+does not establish a requirement to obtain an SDK license or vendor approval. Renaming declarations or generating equivalent text would not
 by itself resolve their provenance. See [the technical provenance review](docs/provenance-review.md)
 for concrete evidence and the question that remains.
 

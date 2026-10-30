@@ -46,7 +46,22 @@ The project distributes no official ExitLag binary or account. Users supply thei
 own installer and valid account. That avoids redistributing the client but does
 not automatically answer the interface provenance question.
 
-## What would resolve the open item
+## Distribution scope
+
+The commercial NetFilter SDK is not a build/runtime dependency of the bridge's
+native filtering implementation and is not included in project downloads. The
+official ExitLag installer is obtained separately by each user and may contain
+its own vendor components. Our installed replacement `nfapi.dll` imports only
+standard Windows/Wine system libraries; `nfextlag.sys` is a project-built stub.
+Linux's open-source netfilter/nftables/NFQUEUE is a different project from the
+commercial SDK vendor.
+
+This release does not claim that matching an API automatically requires an SDK
+license or vendor permission. No SDK implementation was identified in the audited
+source. The remaining declaration-origin gap is documented for transparency;
+this experimental release is not a legal opinion or vendor endorsement.
+
+## Further provenance evidence
 
 Obtain the earlier authoring record showing how the ABI declarations were
 established, and review the relevant terms against it; or obtain appropriate
@@ -55,4 +70,5 @@ should identify the exact source revision and scope. Do not record approval on
 assumption, and do not treat cosmetic rewrites as proof of independent origin.
 
 No external inquiry has been sent and no legal opinion or vendor permission has
-been obtained by this audit.
+been obtained by this audit. Such permission has not been established as a
+requirement merely because the implementation matches this interface.

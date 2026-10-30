@@ -36,6 +36,15 @@ An experimental native Mac launcher and TCP routing backend now live in [`macos/
 
 The release-preparation installers provide fresh setup on macOS and Linux. Users download the official Windows `.exe` from ExitLag, choose it in the bridge, and complete the vendor wizard themselves. Wine is downloaded separately from pinned upstream releases and checked by SHA-256. No proprietary client or account state is bundled. See [`installers/README.md`](installers/README.md) for packages, requirements, validation limits and removal.
 
+## Does this include the commercial NetFilter SDK?
+
+No. The bridge supplies its own `nfapi.dll` compatibility implementation and a
+presence-only `nfextlag.sys` stub. The official client still calls that interface,
+but packet routing is performed by our native backend. Linux's open-source
+nftables/NFQUEUE is separate from the commercial SDK. Users obtain the official
+ExitLag installer themselves. See `THIRD_PARTY.md` for interface provenance and
+runtime licensing.
+
 ## Release status
 
 This is an experimental release candidate. The source-only repository excludes
