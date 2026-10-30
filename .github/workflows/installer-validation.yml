@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - 'installers/**'
+      - 'LICENSES/**'
+      - 'THIRD_PARTY.md'
+      - 'docs/provenance-review.md'
       - 'tests/**'
       - 'backend/**'
       - 'shim/**'

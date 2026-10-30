@@ -12,6 +12,7 @@ where redistribution status is not certain — says so instead of guessing.
 | NetFilter SDK `nfapi` ABI | `shim/nfapi/nfapi_stub.cpp`, `shim/nfapi/*.def` | unknown | **uncertain — see below** |
 | libmnl | linked by `backend/exitlag-netd` | LGPL-2.1-or-later | not redistributed; system library |
 | ExitLag client | not present | proprietary | **never redistributed** |
+| Zig compiler runtime | Selected builtins may be linked into the Windows shim | MIT | notice retained in `LICENSES/Zig-MIT.txt` |
 | Standalone CPython | embedded in the Mac helper | PSF-2.0 and upstream dependency licenses | upstream notices in `LICENSES/python-standalone/` |
 
 ## Wine — `wbemprox` patch
@@ -84,7 +85,9 @@ subscription. This project is not affiliated with or endorsed by ExitLag.
 Build-time only, not redistributed: `clang-cl`, `lld-link`, `llvm-dlltool`,
 `llvm-readobj`, `llvm-undname` (LLVM, Apache-2.0 with LLVM exceptions), a C
 compiler, GNU make, `nftables`, and Python 3 for the test harnesses. Zig 0.17.0 is
-a verified build-only dependency; the toolchain is not shipped in installers.
+a verified compiler dependency; the toolchain is not shipped in installers.
+The Windows build enables Zig compiler-rt builtins, so its MIT copyright and
+permission notice are retained in `LICENSES/Zig-MIT.txt` for linked runtime code.
 
 ## Embedded Python
 

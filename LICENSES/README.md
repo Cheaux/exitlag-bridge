@@ -8,3 +8,5 @@ This project's own code is licensed GPL-3.0-only; see `../LICENSE`. Third-party 
 
 See `THIRD_PARTY.md` for what each notice covers and for the one component whose
 redistribution status is explicitly unresolved.
+
+- `Zig-MIT.txt` — Zig compiler-runtime code selected by the Windows shim build. Copied verbatim from the pinned Zig 0.17.0 distribution.
