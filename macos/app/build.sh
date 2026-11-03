@@ -29,6 +29,23 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/bridge/build" "$payload/
 python3 "$source/../installers/build_runtime.py" python --arch "$(uname -m)" --output "$root/python"
 python3 "$source/build-window-driver.py" --output "$app/Contents/Resources/bridge/window-driver"
 /usr/bin/xcrun swiftc -target "$(uname -m)-apple-macos15.0" -O -parse-as-library "$here/ExitLag.swift" -o "$app/Contents/MacOS/ExitLag"
+/usr/bin/xcrun swiftc -target "$(uname -m)-apple-macos15.0" -O "$here/client-icon.swift" -o "$app/Contents/Resources/bridge/set-client-icon"
+/usr/bin/codesign --force --sign - "$app/Contents/Resources/bridge/set-client-icon"
+plugin="$app/Contents/Resources/bridge/ExitLagIcon.docktileplugin"
+mkdir -p "$plugin/Contents/MacOS"
+/usr/bin/xcrun clang -arch "$(uname -m)" -mmacosx-version-min=15.0 -fobjc-arc -bundle -framework AppKit "$here/client-dock.m" -o "$plugin/Contents/MacOS/ExitLagDockTile"
+cat > "$plugin/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleExecutable</key><string>ExitLagDockTile</string>
+<key>CFBundleIdentifier</key><string>local.cheaux.ExitLagClient.DockTile</string>
+<key>CFBundlePackageType</key><string>BNDL</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>NSPrincipalClass</key><string>ExitLagIdleDockTile</string>
+</dict></plist>
+PLIST
+/usr/bin/codesign --force --sign - "$plugin"
 /usr/bin/xcrun swift "$here/make-icon.swift" "$here/build/BridgeIcon.iconset"
 /usr/bin/iconutil -c icns "$here/build/BridgeIcon.iconset" -o "$app/Contents/Resources/BridgeIcon.icns"
 for file in entry.py setup_worker.py auto_agent.py auto_common.py bridge.py wine_socket.py companion.py client_app.py client_entry.py client_icon.py window_driver.py games.auto.map; do
@@ -52,7 +69,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>ExitLag Bridge</string>
 <key>CFBundleDisplayName</key><string>ExitLag Bridge</string>
 <key>CFBundleIconFile</key><string>BridgeIcon</string>
-<key>CFBundleVersion</key><string>40101</string>
+<key>CFBundleVersion</key><string>40109</string>
 <key>CFBundleShortVersionString</key><string>0.4.1</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>LSMultipleInstancesProhibited</key><true/>

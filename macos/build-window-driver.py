@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Wine window correction from pinned public inputs, never a user prefix.
+"""Build the Wine window and Dock corrections from pinned public inputs.
 SPDX-License-Identifier: GPL-3.0-only
 """
 import argparse
@@ -31,7 +31,9 @@ def main():
         parser.error('The Wine Mac driver must be built on macOS')
     BUILD.mkdir(parents=True, exist_ok=True)
     source_archive = download(CATALOG['wine-source'], CACHE)
-    patch = REPO / 'macos/wine-patches/0001-preserve-exitlag-cropped-window-frame.patch'
+    patches = [REPO / 'macos/wine-patches' / name for name in (
+        '0001-preserve-exitlag-cropped-window-frame.patch',
+        '0002-use-exitlag-transparent-dock-icon.patch')]
     stock = download(CATALOG['wine-macos'], CACHE)
     with tarfile.open(stock) as archive:
         candidates = [m for m in archive if m.isfile() and m.name.endswith('/lib/wine/x86_64-unix/winemac.so')]
@@ -48,7 +50,8 @@ def main():
     extract(source_archive, source_base)
     copied = next(p for p in source_base.iterdir() if (p / 'configure').exists())
     run(['patch', '-p1', '-i', REPO / 'wine-wbemprox/patches/0001-wbemprox-add-logicaldisk-root-directory.patch'], cwd=copied)
-    run(['patch', '-p1', '-i', patch], cwd=copied)
+    for patch in patches:
+        run(['patch', '-p1', '-i', patch], cwd=copied)
     env = os.environ.copy()
     tools = BUILD / 'host-tools/bin'
     env['PATH'] = str(tools) + os.pathsep + env['PATH']
@@ -75,10 +78,11 @@ def main():
             raise RuntimeError('Compiled window driver contains an absolute home-directory path')
     manifest = dict(schema=1, project='exitlag-bridge', original_sha256=original_hash,
                     patched_sha256=digest(binary), source_commit=CATALOG['wine-source']['source_commit'],
-                    patch_sha256=digest(patch), runtime_archive_sha256=CATALOG['wine-macos']['sha256'])
+                    patch_sha256=hashlib.sha256(b''.join(p.read_bytes() for p in patches)).hexdigest(),
+                    runtime_archive_sha256=CATALOG['wine-macos']['sha256'])
     (args.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     (args.output / 'manifest.json').chmod(0o644)
-    # Supply all corresponding Wine source, both patches, and the build recipes.
+    # Supply all corresponding Wine source, all patches, and the build recipes.
     def normalize(info):
         info.uid = info.gid = 0; info.uname = info.gname = 'root'; info.mtime = 0
         return info
@@ -87,7 +91,7 @@ def main():
         for path in sorted(copied.rglob('*')):
             if path.is_file() and path.name != '.bridge-patched':
                 archive.add(path, arcname='wine-11.17/' + str(path.relative_to(copied)), recursive=False, filter=normalize)
-        for file in (Path(__file__).resolve(), REPO / 'installers/build_runtime.py', patch,
+        for file in (Path(__file__).resolve(), REPO / 'installers/build_runtime.py', *patches,
                      REPO / 'wine-wbemprox/patches/0001-wbemprox-add-logicaldisk-root-directory.patch',
                      REPO / 'installers/bridge_setup/catalog.json'):
             archive.add(file, arcname='bridge/' + str(file.relative_to(REPO)), filter=normalize)

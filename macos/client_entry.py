@@ -29,7 +29,10 @@ def main():
                        # The Vulkan surface can return black after Dock restore.
                        # Use Qt's bundled software OpenGL for this UI only.
                        QSG_RHI_BACKEND='opengl', QT_OPENGL='software', QSG_RENDER_LOOP='basic',
-                       EXITLAG_MACOS_SAFE_QT_TIMERS='0', EXITLAG_NETD='127.0.0.1:51900',
+                       # Qt falls back to Windows message timers when its
+                       # precision timer is unavailable under Wine.
+                       EXITLAG_MACOS_SAFE_QT_TIMERS='1', EXITLAG_NETD='127.0.0.1:51900',
+                       EXITLAG_MACOS_APP_ICON=str(app / 'Contents/Resources/ClientIcon.icns'),
                        EXITLAG_NETD_TOKEN='Z:/var/run/cheaux-exitlag-%s/session.token' % os.getuid())
     fd = os.open(state / 'launcher-client.log', os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
     info = os.fstat(fd)

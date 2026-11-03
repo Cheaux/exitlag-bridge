@@ -5,11 +5,13 @@ import os
 from pathlib import Path
 import secrets
 import socket
+import sys
 import tempfile
 import threading
 import time
 import unittest
 from unittest import mock
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'installers'))
 import auto_common as c
 import auto_agent as agent
 import auto_service as service
@@ -65,6 +67,31 @@ class Records(unittest.TestCase):
                 c.read_private(path, os.getuid())
 
 class Lifecycle(unittest.TestCase):
+    def test_runtime_initialization_finishes_before_dashboard_launch(self):
+        executable = Path('/private/test/prefix/drive_c/ExitLag/ExitLag.exe')
+        order = []
+        with mock.patch('client_app.prepare_client_app', return_value=Path('/private/test/ExitLag.app')), \
+                mock.patch('window_driver.install_window_driver', return_value='current'), \
+                mock.patch.object(agent.subprocess, 'run', side_effect=lambda *args, **kwargs: order.append(('boot', args, kwargs))), \
+                mock.patch.object(agent.subprocess, 'Popen', side_effect=lambda *args, **kwargs: order.append(('dashboard', args, kwargs))):
+            agent.start_client(executable, None)
+        self.assertEqual([item[0] for item in order], ['boot', 'dashboard'])
+        self.assertEqual(order[0][1][0][1:], ['cmd.exe', '/d', '/c', 'exit', '0'])
+        self.assertEqual(order[0][2]['env']['WINEPREFIX'], str(agent.STATE / 'prefix'))
+        self.assertEqual(order[0][2]['env']['EXITLAG_NETD'], '127.0.0.1:51900')
+        self.assertEqual(order[0][2]['env']['EXITLAG_NETD_TOKEN'],
+                         'Z:/var/run/cheaux-exitlag-%s/session.token' % os.getuid())
+        self.assertTrue(order[0][2]['check'])
+
+    def test_failed_runtime_initialization_does_not_open_a_broken_login(self):
+        with mock.patch('client_app.prepare_client_app', return_value=Path('/private/test/ExitLag.app')), \
+                mock.patch('window_driver.install_window_driver', return_value='current'), \
+                mock.patch.object(agent.subprocess, 'run', side_effect=agent.subprocess.TimeoutExpired('cmd.exe', 45)), \
+                mock.patch.object(agent.subprocess, 'Popen') as launch:
+            with self.assertRaises(agent.subprocess.TimeoutExpired):
+                agent.start_client(Path('/private/test/ExitLag.exe'), None)
+            launch.assert_not_called()
+
     def test_standard_game_paths_may_be_installed_after_the_bridge(self):
         with tempfile.TemporaryDirectory() as folder:
             mapping = Path(folder) / 'games.map'

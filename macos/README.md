@@ -9,8 +9,27 @@ macOS labels its Dock icon **ExitLag**. Reopening that app or choosing **Show
 ExitLag dashboard** in the bridge menu restores its minimized window through
 macOS. Qt uses the client's bundled software OpenGL renderer to avoid the black
 Vulkan surface seen after Dock restore. This affects the dashboard, not the game.
-The wrapper's icon is extracted locally from the installed official client;
-no vendor icon is distributed in the bridge.
+The wrapper's transparent red-and-white icon is extracted locally from the
+installed official client's dashboard assets. It has transparent padding to
+keep its Dock size balanced; older client layouts fall back to the Windows
+executable icon. No vendor icon is distributed in the bridge.
+The scoped Wine Dock correction draws that image directly, preserving its
+transparency when macOS would otherwise add a white backing to the app icon.
+A minimal Dock tile plug-in draws the same locally extracted image while the
+app is closed. The running-client correction alone cannot control the pinned,
+inactive tile. The plug-in reads only the generated wrapper's marker and icon.
+The Finder icon receives the same transparent image after code signing.
+The visible wrapper is a foreground app so macOS can animate its Dock launch;
+the separate menu-bar bridge remains an accessory app.
+
+The launcher enables the existing Qt timer compatibility fallback. Qt uses its
+Windows message timer implementation when the precision timer is unavailable;
+this avoids the stalled login and unresponsive route controls observed with
+the precision timer under Wine. The foreground launcher uses the same default.
+Before opening the dashboard or starting a game companion, the launcher waits
+for a built-in Wine command to complete the prefix's normal service startup.
+This lets the official client restore its own saved session on a cold start;
+the bridge never reads or re-enters account credentials.
 
 The native Wine driver patch in
 [`wine-patches/0001-preserve-exitlag-cropped-window-frame.patch`](wine-patches/0001-preserve-exitlag-cropped-window-frame.patch)
@@ -75,7 +94,7 @@ cd macos
 python3 -m unittest -v test_bridge.py test_pf_plan.py test_session_control.py test_wine_socket.py test_recover.py test_auto_launcher.py test_client_app.py test_window_driver.py
 ```
 
-The current 47 local checks cover real loopback data transfer, the shim protocol, source-tuple preservation, authentication, private configuration checks, both game identities, companion restart handling, fallback, PF scope, recovery, the generated client app, and atomic window-driver upgrades. They do not replace live game testing.
+The local checks cover real loopback data transfer, the shim protocol, source-tuple preservation, authentication, private configuration checks, both game identities, companion restart handling, fallback, PF scope, recovery, the generated client app, and atomic window-driver upgrades. They do not replace live game testing.
 
 `python3 -m unittest -v test_client_app.py` checks the generated app's identity,
 private configuration, preservation of unrelated apps, and refusal of links that
@@ -89,11 +108,17 @@ restore, input transparency, and removal of the temporary image:
 ```sh
 python3 test_native_window_snapshot.py \
   --wine-source ../build/installer/wine-source/wine-wine-11.17
+python3 test_native_dock_icon.py \
+  --wine-source ../build/installer/wine-source/wine-wine-11.17
 ```
 
 It requires macOS, Xcode command-line tools, and the unmodified pinned Wine
 source already downloaded by the payload build. It does not use an ExitLag
 account, run Wine, or capture the desktop.
+The Dock check invokes the actual view drawing callback and checks visible
+pixels as well as transparent padding, so an empty tile cannot pass. It also
+checks that Wine applications without the ExitLag icon setting keep their Dock
+behavior.
 
 The command-line foreground launchers remain available for diagnostics; do not run them concurrently with the installed app. See the repository's Linux README for Linux installation and testing.
 

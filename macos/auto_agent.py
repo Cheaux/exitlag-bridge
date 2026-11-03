@@ -114,6 +114,18 @@ def start_client(executable, log):
     bundle = HERE.parents[2]
     bridge_app = bundle if bundle.suffix == '.app' else Path('/Applications/ExitLag Bridge.app')
     app = prepare_client_app(STATE, executable, bridge_app)
+    # Finish Wine's service/Internet initialization before the client's saved
+    # session starts. Opening the app asynchronously while a game companion
+    # boots the same cold prefix can otherwise leave login stuck at 0%.
+    environment = os.environ.copy()
+    environment.update(WINEPREFIX=str(STATE / 'prefix'), WINEDEBUG='-all',
+                       EXITLAG_NETD='127.0.0.1:51900',
+                       EXITLAG_NETD_TOKEN='Z:/var/run/cheaux-exitlag-%s/session.token' % os.getuid())
+    # A normal built-in command waits for Wine's automatic boot event. An
+    # explicit wineboot --init here would start a second services.exe instance.
+    subprocess.run([str(STATE / 'runtime/bin/wine'), 'cmd.exe', '/d', '/c', 'exit', '0'],
+                   env=environment, cwd=STATE, stdin=subprocess.DEVNULL,
+                   stdout=log, stderr=log, check=True, timeout=45)
     return subprocess.Popen(['/usr/bin/open', '-n', '-a', str(app), '--args', '--bridge-launch'],
                             cwd=STATE, stdin=subprocess.DEVNULL,
                             stdout=log, stderr=log, start_new_session=True)

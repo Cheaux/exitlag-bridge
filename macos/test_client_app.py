@@ -29,6 +29,7 @@ class ClientApplication(unittest.TestCase):
             info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
             self.assertEqual(info['CFBundleDisplayName'], 'ExitLag')
             self.assertEqual(info['CFBundleIdentifier'], 'local.cheaux.ExitLagClient')
+            self.assertFalse(info['LSUIElement'])
             config = json.loads((app / 'Contents/Resources/client.json').read_text())
             self.assertEqual(config['client_relative'], 'drive_c/ExitLag/ExitLag.exe')
             self.assertEqual((app / 'Contents/Resources/client.json').stat().st_mode & 0o777, 0o600)
@@ -43,6 +44,26 @@ class ClientApplication(unittest.TestCase):
             with self.assertRaises(ValueError):
                 client_app.prepare_client_app(state, exe, '/Applications/ExitLag Bridge.app')
             self.assertEqual(note.read_text(), 'keep')
+
+    def test_closed_dock_plugin_preserves_the_actual_client_launch_path(self):
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(client_app.subprocess, 'run'), \
+                mock.patch.object(client_app, 'client_icns', return_value=None):
+            state, exe = self.fixture(folder)
+            source = Path(folder) / 'packaged-bridge'
+            source.mkdir()
+            (source / 'client_entry.py').write_text('# entry fixture\n')
+            plugin = source / 'ExitLagIcon.docktileplugin'
+            for name in ('Contents/Info.plist', 'Contents/MacOS/ExitLagDockTile',
+                         'Contents/_CodeSignature/CodeResources'):
+                target = plugin / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b'packaged plug-in fixture')
+            with mock.patch.object(client_app, '__file__', str(source / 'client_app.py')):
+                app = client_app.prepare_client_app(state, exe, '/Applications/ExitLag Bridge.app')
+            config = json.loads((app / 'Contents/Resources/client.json').read_text())
+            self.assertEqual(config['client_relative'], 'drive_c/ExitLag/ExitLag.exe')
+            self.assertEqual(plistlib.loads((app / 'Contents/Info.plist').read_bytes())['NSDockTilePlugIn'],
+                             'ExitLagIcon.docktileplugin')
 
     def test_icon_is_attached_without_being_shipped_with_the_bridge(self):
         with tempfile.TemporaryDirectory() as folder, mock.patch.object(client_app.subprocess, 'run'), \
@@ -62,6 +83,15 @@ class ClientApplication(unittest.TestCase):
             self.assertEqual(list(outside.iterdir()), [])
             with self.assertRaises(ValueError):
                 client_app.prepare_client_app(state, outside / 'ExitLag.exe', '/Applications/ExitLag Bridge.app')
+
+    def test_updated_files_preserve_the_bytes_of_existing_readers(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'mapped-dock-code'
+            client_app.write_owned(path, b'old code', 0o600)
+            with path.open('rb') as loaded:
+                client_app.write_owned(path, b'new code', 0o600)
+                self.assertEqual(loaded.read(), b'old code')
+            self.assertEqual(path.read_bytes(), b'new code')
 
     def test_links_cannot_truncate_an_unrelated_file(self):
         with tempfile.TemporaryDirectory() as folder:

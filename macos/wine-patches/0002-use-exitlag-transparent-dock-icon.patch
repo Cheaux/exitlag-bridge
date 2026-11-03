@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Wine 11.17: draw the locally extracted icon only for the ExitLag launcher.
+--- a/dlls/winemac.drv/cocoa_app.m
++++ b/dlls/winemac.drv/cocoa_app.m
+@@ -95,6 +95,38 @@
+ @end
+ 
+ 
++/* ExitLag-only Dock drawing; no other Wine application opts into this view. */
++@interface ExitLagDockView : NSView
++{
++    NSImage *icon;
++    BOOL reported;
++}
++- (id)initWithIcon:(NSImage *)image size:(NSSize)size;
++@end
++@implementation ExitLagDockView
++- (id)initWithIcon:(NSImage *)image size:(NSSize)size
++{
++    self = [super initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
++    if (self) icon = [image retain];
++    return self;
++}
++- (void)dealloc { [icon release]; [super dealloc]; }
++- (BOOL)isOpaque { return NO; }
++- (void)drawRect:(NSRect)dirty
++{
++    [[NSColor clearColor] setFill];
++    NSRectFillUsingOperation(self.bounds, NSCompositingOperationCopy);
++    [icon drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver
++        fraction:1 respectFlipped:YES hints:nil];
++    if (!reported)
++    {
++        fprintf(stderr, "ExitLag Dock icon: transparent view drawn\n");
++        reported = YES;
++    }
++}
++@end
++
++
+ @interface WineApplicationController ()
+ 
+ @property (readwrite, copy, nonatomic) NSEvent* lastFlagsChanged;
+@@ -231,6 +263,9 @@
+             NSString* title;
+             NSMenuItem* item;
+ 
++            /* Prepare ExitLag's transparent tile before exposing the Dock item. */
++            if (getenv("EXITLAG_MACOS_APP_ICON"))
++                [self setApplicationIconFromCGImageArray:@[]];
+             [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+ 
+             if (activateIfTransformed)
+@@ -1057,6 +1092,28 @@
+ 
+     - (void) setApplicationIconFromCGImageArray:(NSArray*)images
+     {
++        const char *iconPath = getenv("EXITLAG_MACOS_APP_ICON");
++        if (iconPath)
++        {
++            NSString *path = [NSString stringWithUTF8String:iconPath];
++            if ([[path lastPathComponent] isEqualToString:@"ClientIcon.icns"])
++            {
++                NSImage *icon = [[NSImage alloc] initWithContentsOfFile:path];
++                if (icon)
++                {
++                    self.applicationIcon = icon;
++                    [NSApp setApplicationIconImage:icon];
++                    NSDockTile *tile = [NSApp dockTile];
++                    ExitLagDockView *view = [[ExitLagDockView alloc] initWithIcon:icon size:tile.size];
++                    tile.contentView = view;
++                    [tile display];
++                    dispatch_async(dispatch_get_main_queue(), ^{ [tile display]; });
++                    [view release];
++                    [icon release];
++                    return;
++                }
++            }
++        }
+         NSImage* nsimage = nil;
+ 
+         if ([images count])

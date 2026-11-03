@@ -20,7 +20,7 @@ export MVK_CONFIG_LOG_LEVEL=0
 unset QT_QUICK_BACKEND QT_OPENGL
 export QSG_RHI_BACKEND=vulkan
 export QSG_RENDER_LOOP=basic
-export EXITLAG_MACOS_SAFE_QT_TIMERS="${EXITLAG_MACOS_SAFE_QT_TIMERS:-0}"
+export EXITLAG_MACOS_SAFE_QT_TIMERS="${EXITLAG_MACOS_SAFE_QT_TIMERS:-1}"
 if [ ! -x "$wine" ]; then
   printf 'Wine runtime not found: %s\n' "$wine" >&2
   exit 1

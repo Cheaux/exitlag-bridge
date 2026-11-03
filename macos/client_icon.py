@@ -5,8 +5,42 @@ from pathlib import Path
 import struct
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
 
 from bridge_setup.pe import PE
+
+
+def client_logo_svg(executable):
+    """Use the client's transparent dashboard mark instead of its old tile.
+
+    The supported client embeds this small SVG without compression. Keep its
+    paths local, accept only that self-contained asset, and leave the ICO as the
+    fallback for builds with a different resource layout.
+    """
+    data = PE(executable).data
+    marker = b'<svg width="40" height="40" viewBox="0 0 30 27"'
+    start = data.find(marker)
+    if start < 0:
+        return None
+    end = data.find(b'</svg>', start, start + 16384)
+    if end < 0:
+        return None
+    try:
+        root = ET.fromstring(data[start:end + 6])
+    except ET.ParseError:
+        return None
+    paths = list(root)
+    if (root.tag != '{http://www.w3.org/2000/svg}svg' or not 1 <= len(paths) <= 8
+            or any(path.tag != '{http://www.w3.org/2000/svg}path'
+                   or set(path.attrib) != {'d', 'fill'} or len(path)
+                   or path.get('fill') not in ('white', '#A21916') for path in paths)):
+        return None
+    # The original UI viewport clips the lower edge. This square includes the
+    # whole mark and gives it 12.5% transparent padding on each side in the Dock.
+    root.set('width', '1024')
+    root.set('height', '1024')
+    root.set('viewBox', '0 0 32 32')
+    return ET.tostring(root, encoding='utf-8')
 
 
 def client_ico(executable):
@@ -70,6 +104,24 @@ def client_ico(executable):
 
 def client_icns(executable):
     with tempfile.TemporaryDirectory(prefix='exitlag-icon-') as folder:
+        logo = client_logo_svg(executable)
+        if logo is not None:
+            source = Path(folder) / 'client.svg'
+            source.write_bytes(logo)
+            iconset = Path(folder) / 'ClientIcon.iconset'
+            iconset.mkdir()
+            for size in (16, 32, 128, 256, 512):
+                for scale in (1, 2):
+                    suffix = '@2x' if scale == 2 else ''
+                    target = iconset / f'icon_{size}x{size}{suffix}.png'
+                    pixels = str(size * scale)
+                    subprocess.run(['/usr/bin/sips', '-z', pixels, pixels, '-s', 'format',
+                                    'png', str(source), '--out', str(target)], check=True,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+            target = Path(folder) / 'ClientIcon.icns'
+            subprocess.run(['/usr/bin/iconutil', '-c', 'icns', str(iconset), '-o', str(target)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+            return target.read_bytes()
         source, target = Path(folder) / 'client.ico', Path(folder) / 'ClientIcon.icns'
         source.write_bytes(client_ico(executable))
         # Windows icons may use arbitrary dimensions (the current one is 75px).
