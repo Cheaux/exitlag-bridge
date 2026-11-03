@@ -10,6 +10,7 @@ struct Status: Decodable, Sendable {
     let routing: Bool?
     let relay_active: Int?
     let bytes_received: Int?
+    let client_pid: Int32?
 }
 
 func readStatus() -> Status? {
@@ -130,6 +131,22 @@ func readStatus() -> Status? {
             error = nil
         } catch { self.error = "Setup could not start: \(error.localizedDescription)" }
     }
+    func showDashboard() {
+        guard !needsSetup else { return }
+        guard let pid = status?.client_pid,
+              NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "local.cheaux.ExitLagClient" else {
+            start(); return
+        }
+        let application = folder.appendingPathComponent("ExitLag.app")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.createsNewApplicationInstance = false
+        NSWorkspace.shared.openApplication(at: application, configuration: configuration) { _, failure in
+            if failure != nil {
+                Task { @MainActor in self.error = "The ExitLag dashboard could not be opened." }
+            }
+        }
+    }
     func stop() {
         if agent?.isRunning == true { agent?.terminate() }
         if setup?.isRunning == true { setup?.terminate() }
@@ -150,12 +167,24 @@ func readStatus() -> Status? {
 
 @MainActor enum Session { static weak var launcher: Launcher? }
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationWillTerminate(_ notification: Notification) { Session.launcher?.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        Session.launcher?.stop()
+    }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        Session.launcher?.showDashboard()
+        return false
+    }
 }
 
 @main struct ExitLagMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @StateObject private var launcher = Launcher()
+    @StateObject private var launcher: Launcher
+    init() {
+        // A menu-bar app may launch without constructing any window content.
+        // Create the controller eagerly so the backend always starts.
+        let controller = Launcher()
+        _launcher = StateObject(wrappedValue: controller)
+    }
     var body: some Scene {
         Window("ExitLag Bridge", id: "main") {
             VStack(alignment: .leading, spacing: 18) {
@@ -212,6 +241,7 @@ struct ExitLagMenu: View {
     @Environment(\.openWindow) var openWindow
     var body: some View {
         Text(launcher.message)
+        Button("Show ExitLag dashboard") { launcher.showDashboard() }.disabled(launcher.needsSetup)
         Button("Show routing status") { openWindow(id: "main"); NSApp.activate() }
         Divider()
         Button("Quit ExitLag Bridge") { NSApp.terminate(nil) }.keyboardShortcut("q")

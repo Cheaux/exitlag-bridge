@@ -1,0 +1,146 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# Wine 11.17: retain the displayed ExitLag frame during Dock animations.
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -26,6 +26,7 @@
+ #include <dlfcn.h>
+ 
+ #import "cocoa_window.h"
++#import <objc/runtime.h>
+ 
+ #include "macdrv_cocoa.h"
+ #import "cocoa_app.h"
+@@ -354,6 +355,93 @@
+ @end
+ 
+ 
++/* ExitLag-only minimize frame retention; no images leave this process. */
++static char frameKey, timeKey, overlayKey;
++@interface ExitLagSnapshotView : NSImageView
++@end
++@implementation ExitLagSnapshotView
++- (NSView *)hitTest:(NSPoint)point { return nil; }
++@end
++
++static BOOL isClient(NSWindow *window)
++{
++    return [window.title isEqualToString:@"ExitLag"];
++}
++
++static void exitlag_remember_frame(id view, CGImageRef image)
++{
++    NSWindow *window = [(NSView *)view window];
++    if (!image || !isClient(window) || !window.visible || window.miniaturized) return;
++    NSRect bounds = [(NSView *)view bounds];
++    size_t width = CGImageGetWidth(image), height = CGImageGetHeight(image);
++    if (width < 480 || height < 270 || width > 8192 || height > 8192 || width * height > 8 * 1024 * 1024 ||
++        width < bounds.size.width * .9 || height < bounds.size.height * .9) return;
++    CFTimeInterval now = CACurrentMediaTime();
++    NSNumber *previous = objc_getAssociatedObject(window, &timeKey);
++    if (previous && now - previous.doubleValue < .2) return;
++    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
++    CGContextRef context = CGBitmapContextCreate(NULL, width, height, 8, width * 4,
++        space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
++    CGColorSpaceRelease(space);
++    if (!context) return;
++    CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
++    const unsigned char *pixels = CGBitmapContextGetData(context);
++    unsigned white = 0;
++    for (unsigned y = 1; y <= 4; y++) for (unsigned x = 1; x <= 4; x++) {
++        const unsigned char *p = pixels + ((height * y / 5) * width + width * x / 5) * 4;
++        if (p[0] > 245 && p[1] > 245 && p[2] > 245) white++;
++    }
++    if (white < 16) {
++        CGImageRef copy = CGBitmapContextCreateImage(context);
++        if (copy) {
++            NSImage *snapshot = [[NSImage alloc] initWithCGImage:copy size:bounds.size];
++            objc_setAssociatedObject(window, &frameKey, snapshot, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++            objc_setAssociatedObject(window, &timeKey, @(now), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++            [snapshot release];
++            CGImageRelease(copy);
++        }
++    }
++    CGContextRelease(context);
++}
++
++static void exitlag_preserve_frame(id window)
++{
++    if (isClient(window) && !stage_manager_enabled()) {
++        NSImage *image = objc_getAssociatedObject(window, &frameKey);
++        if (image) {
++            [objc_getAssociatedObject(window, &overlayKey) removeFromSuperview];
++            NSView *content = [(NSWindow *)window contentView];
++            ExitLagSnapshotView *overlay = [[ExitLagSnapshotView alloc] initWithFrame:content.bounds];
++            overlay.image = image;
++            overlay.imageScaling = NSImageScaleAxesIndependently;
++            overlay.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
++            overlay.wantsLayer = YES;
++            overlay.layer.zPosition = 10000;
++            [content addSubview:overlay positioned:NSWindowAbove relativeTo:nil];
++            objc_setAssociatedObject(window, &overlayKey, overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++            [overlay displayIfNeeded];
++            [content displayIfNeeded];
++            [CATransaction flush];
++            [overlay release];
++            fprintf(stderr, "ExitLag animation [%d]: preserved client frame\n", getpid());
++        } else fprintf(stderr, "ExitLag animation [%d]: no GDI frame available\n", getpid());
++    }
++}
++
++static void exitlag_restore_frame(id window)
++{
++    NSView *overlay = objc_getAssociatedObject(window, &overlayKey);
++    /* Wine deliberately disables automatic resizing of its Win32 subviews. */
++    if (overlay) [overlay setFrame:[(NSWindow *)window contentView].bounds];
++    if (overlay) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 150 * NSEC_PER_MSEC),
++        dispatch_get_main_queue(), ^{
++            [overlay removeFromSuperview];
++            if (objc_getAssociatedObject(window, &overlayKey) == overlay)
++                objc_setAssociatedObject(window, &overlayKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++        });
++}
++
++
+ @implementation WineContentView
+ 
+ @synthesize everHadGLContext = _everHadGLContext;
+@@ -420,6 +508,8 @@
+         {
+             layer.position = surfaceRect.origin;
+             layer.contents = (id)image;
++            /* Cache the masked, cropped image, not the padded backing surface. */
++            exitlag_remember_frame(self, image);
+             CFRelease(image);
+             [window windowDidDrawContent];
+ 
+@@ -1255,12 +1345,14 @@
+                         if (stage_manager_enabled())
+                         {
+                             [self setStyleMask:([self styleMask] | NSWindowStyleMaskMiniaturizable)];
++                            exitlag_preserve_frame(self);
+                             [super miniaturize:nil];
+                         }
+                     }
+                     else
+                     {
+                         [self setStyleMask:([self styleMask] | NSWindowStyleMaskMiniaturizable)];
++                        exitlag_preserve_frame(self);
+                         [super miniaturize:nil];
+                         discard |= event_mask_for_type(WINDOW_BROUGHT_FORWARD) |
+                                    event_mask_for_type(WINDOW_GOT_FOCUS) |
+@@ -1729,6 +1821,7 @@
+             if (pendingMinimize)
+             {
+                 [self setStyleMask:([self styleMask] | NSWindowStyleMaskMiniaturizable)];
++                exitlag_preserve_frame(self);
+                 [super miniaturize:nil];
+                 pendingMinimize = FALSE;
+             }
+@@ -2727,6 +2820,7 @@
+ 
+     - (void)windowDidDeminiaturize:(NSNotification *)notification
+     {
++        exitlag_restore_frame(self);
+         WineApplicationController* controller = [WineApplicationController sharedController];
+ 
+         if (!ignore_windowDeminiaturize)

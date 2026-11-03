@@ -22,7 +22,7 @@ other games have the specific results listed below.
 | Platform | Download and start | Current scope |
 |---|---|---|
 | **Linux, x86_64 — Arch and Ubuntu** | [Download the Linux installer](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.0-alpha.2/exitlag-bridge-0.4.0-alpha.2-linux-x86_64.tar.gz), then follow the [shared Linux setup guide](docs/linux.md). | The same archive passes installation checks on Ubuntu 22.04, Ubuntu 24.04 and Arch userspace. **Real WoW gameplay is maintainer-verified on Arch.** |
-| Apple Silicon Mac, macOS 15+ | [Download the Mac installer](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.0-alpha.2/ExitLag-Bridge-0.4.0-alpha.2-macos-arm64.pkg), install it, then open **ExitLag Bridge** in Applications. | Current routing is WoW-specific and IPv4 TCP only. Intel Macs are not supported by this binary. |
+| Apple Silicon Mac, macOS 15+ | [Download the Mac installer](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.1-alpha.1/ExitLag-Bridge-0.4.1-alpha.1-macos-arm64.pkg), install it, then open **ExitLag Bridge** in Applications. | Current routing is WoW-specific and IPv4 TCP only. Intel Macs are not supported by this binary. |
 
 First open shows **Download from ExitLag** and **Choose installer…** buttons.
 Use the download button to open the official site, then use the file picker to

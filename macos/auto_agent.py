@@ -102,15 +102,20 @@ def stop_clients(executable):
 
 
 def start_client(executable, log):
-    env = os.environ.copy()
-    env.pop('QT_QUICK_BACKEND', None)
-    env.pop('QT_OPENGL', None)
-    env.update(WINEPREFIX=str(STATE / 'prefix'), WINEDEBUG='-all', MVK_CONFIG_LOG_LEVEL='0',
-               QSG_RHI_BACKEND='vulkan', QSG_RENDER_LOOP='basic', EXITLAG_MACOS_SAFE_QT_TIMERS='0',
-               EXITLAG_NETD='127.0.0.1:51900',
-               EXITLAG_NETD_TOKEN='Z:' + str(runtime_for(os.getuid()) / 'session.token'))
-    return subprocess.Popen([str(STATE / 'runtime/bin/wine'), str(executable)],
-                            cwd=executable.parent, env=env, stdin=subprocess.DEVNULL,
+    from client_app import prepare_client_app
+    from window_driver import install_window_driver
+    try:
+        result = install_window_driver(STATE, HERE / 'window-driver')
+        if result == 'preserved':
+            print('Window correction skipped: the private Wine driver has unrelated modifications', flush=True)
+    except (OSError, ValueError) as error:
+        # Cosmetic support must never prevent the client or routing from starting.
+        print('Window correction skipped: ' + str(error), flush=True)
+    bundle = HERE.parents[2]
+    bridge_app = bundle if bundle.suffix == '.app' else Path('/Applications/ExitLag Bridge.app')
+    app = prepare_client_app(STATE, executable, bridge_app)
+    return subprocess.Popen(['/usr/bin/open', '-n', '-a', str(app), '--args', '--bridge-launch'],
+                            cwd=STATE, stdin=subprocess.DEVNULL,
                             stdout=log, stderr=log, start_new_session=True)
 
 
@@ -169,6 +174,7 @@ def main():
     try:
         while not STOPPING and alive(args.parent):
             service = None
+            client_pid = None
             try:
                 service, _ = read_private(runtime / 'status.json', os.getuid())
                 if time.time() - service['updated_at'] > 3:
@@ -189,6 +195,7 @@ def main():
                     launched_at = time.monotonic()
                     lease.enabled = True
                 pids = client_pids(executable)
+                client_pid = pids[0] if pids else None
                 if not pids and time.monotonic() - launched_at > 20:
                     stage, message = 'closed', 'ExitLag is closed. Ordinary routing is active.'
                     publish_status(dict(stage=stage, message=message, updated_at=time.time()))
@@ -219,7 +226,7 @@ def main():
                     message = 'WoW traffic is flowing through ExitLag'
                 elif service.get('stage') == 'ready' and companions:
                     message = 'Ready · reconnect your character to route a new connection'
-            value = dict(stage=stage, message=message, updated_at=time.time(), games=[
+            value = dict(stage=stage, message=message, updated_at=time.time(), client_pid=client_pid, games=[
                 'Forever' if '/_forever_/' in native else 'Classic Era' for native in companions],
                 routing=bool(service and service.get('routing')), relay_active=(service or {}).get('relay_active', 0),
                 bytes_received=(service or {}).get('bytes_received', 0))

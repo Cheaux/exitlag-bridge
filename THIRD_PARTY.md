@@ -9,6 +9,7 @@ where redistribution status is not certain — says so instead of guessing.
 | Component | Where | Licence | Status |
 |---|---|---|---|
 | Wine (`wbemprox` patch) | `wine-wbemprox/patches/` | LGPL-2.1-or-later | distributable with notice |
+| Wine Mac window-driver patch | `macos/wine-patches/` | LGPL-2.1-or-later | rebuilt module and corresponding source accompany Mac releases |
 | `nfapi`-compatible interface | `shim/nfapi/nfapi_stub.cpp`, `shim/nfapi/*.def` | first-party implementation; interface provenance note below | no commercial SDK implementation bundled |
 | libmnl | linked by `backend/exitlag-netd` | LGPL-2.1-or-later | not redistributed; system library |
 | ExitLag client | not present | proprietary | **never redistributed** |
@@ -29,6 +30,17 @@ releases. The full Wine runtimes are downloaded from upstream during ordinary-us
 setup; no Wine runtime is uploaded from a developer's configured prefix.
 
 Upstream: <https://gitlab.winehq.org/wine/wine>
+
+## Wine — Mac window driver
+
+`macos/build-window-driver.py` builds `winemac.so` from the pinned Wine 11.17
+source with `macos/wine-patches/0001-preserve-exitlag-cropped-window-frame.patch`.
+The modification retains the displayed window image during Dock animations.
+It remains LGPL-2.1-or-later; the notice in `LICENSES/LGPL-2.1.txt` is included.
+Mac releases provide `exitlag-bridge-macos-wine-source.tar.gz`, containing the
+corresponding modified Wine source, both Wine patches and build recipes.
+The stock runtime and source archives are verified against the public catalog;
+release artifacts are built without reading a developer's configured Wine prefix.
 
 ## NetFilter SDK — the `nfapi` interface
 

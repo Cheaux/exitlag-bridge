@@ -3,6 +3,8 @@
 SPDX-License-Identifier: GPL-3.0-only
 """
 import argparse
+import hashlib
+import json
 from pathlib import Path
 import subprocess
 
@@ -36,6 +38,15 @@ def sign(root, identity, allow_adhoc=False):
         options.append('--timestamp')
     for path in paths:
         subprocess.run(['/usr/bin/codesign', *options, str(path)], check=True)
+    driver = app / 'Contents/Resources/bridge/window-driver/winemac.so'
+    manifest = driver.with_name('manifest.json')
+    if driver.is_file() and manifest.is_file():
+        # A Developer ID signature changes the module bytes. Seal the final
+        # fingerprint into the app after all nested code has been signed.
+        value = json.loads(manifest.read_text())
+        value['patched_sha256'] = hashlib.sha256(driver.read_bytes()).hexdigest()
+        manifest.write_text(json.dumps(value, indent=2) + '\n')
+        manifest.chmod(0o644)
     subprocess.run(['/usr/bin/codesign', *options, str(app)], check=True)
     for path in paths:
         subprocess.run(['/usr/bin/codesign', '--verify', '--strict', str(path)], check=True)

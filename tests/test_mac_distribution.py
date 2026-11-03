@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Distribution safeguards without signing identities or Apple service access."""
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -30,6 +32,23 @@ class Distribution(unittest.TestCase):
             (payload/'external').symlink_to(outside)
             inside=payload/'inside';inside.write_bytes(b'\xcf\xfa\xed\xfe' + b'fake')
             self.assertEqual(signer.binaries(payload),[inside.resolve()])
+
+    def test_resigning_refreshes_driver_fingerprint_before_sealing_app(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);app=root/'Applications/ExitLag Bridge.app'
+            driver=app/'Contents/Resources/bridge/window-driver/winemac.so'
+            driver.parent.mkdir(parents=True)
+            (app/'Contents/Info.plist').write_text('fixture')
+            driver.write_bytes(b'\xcf\xfa\xed\xfe' + b'original signature')
+            manifest=driver.with_name('manifest.json');manifest.write_text('{}')
+            def command(args,**kwargs):
+                if '--sign' in args and args[-1]==str(driver):
+                    driver.write_bytes(b'\xcf\xfa\xed\xfe' + b'replaced signature')
+                if '--sign' in args and args[-1]==str(app):
+                    self.assertEqual(json.loads(manifest.read_text())['patched_sha256'],
+                                     hashlib.sha256(driver.read_bytes()).hexdigest())
+            with mock.patch.object(signer.subprocess,'run',side_effect=command):
+                signer.sign(root,'Example Developer ID')
 
     def test_notarization_rejection_cannot_staple_or_claim_success(self):
         with tempfile.TemporaryDirectory() as temporary:

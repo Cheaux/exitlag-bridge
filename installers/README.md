@@ -21,8 +21,16 @@ routing replaces the Windows driver. Other installer failures are not ignored.
 
 ## macOS
 
-Download and install the [Mac installer](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.0-alpha.2/ExitLag-Bridge-0.4.0-alpha.2-macos-arm64.pkg), then open **ExitLag Bridge** in Applications.
+Download and install the [Mac installer](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.1-alpha.1/ExitLag-Bridge-0.4.1-alpha.1-macos-arm64.pkg), then open **ExitLag Bridge** in Applications.
 First run shows setup; subsequent launches open the real ExitLag dashboard.
+The Mac update includes the ExitLag Dock name and locally extracted icon,
+click-to-restore behavior, and full-size window animations. The matching Wine
+display correction is applied automatically for fresh setups and upgrades.
+
+To update an existing installation, quit **ExitLag Bridge** from its menu-bar
+menu, run the new Mac package, and reopen it. The existing client and account
+data are preserved. If you pinned an older Bridge shortcut, keep the running
+**ExitLag** icon in the Dock and remove the older duplicate shortcut.
 The package includes an immutable standalone Python interpreter for the routing
 helper, so end users do not need Command Line Tools or Homebrew. Wine downloads
 and the vendor wizard run as the ordinary user. Apple Silicon also needs Rosetta;
@@ -34,7 +42,7 @@ live-game evidence is Apple Silicon/macOS 27.2. Intel builds, reboot/sleep
 recovery, and Forever world entry still need validation. Forever has only been
 verified through character selection.
 
-The [Mac uninstall package](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.0-alpha.2/ExitLag-Bridge-Uninstall-0.4.0-alpha.2-macos-arm64.pkg) removes the program and administrator helper,
+The [Mac uninstall package](https://github.com/Cheaux/exitlag-bridge/releases/download/v0.4.1-alpha.1/ExitLag-Bridge-Uninstall-0.4.1-alpha.1-macos-arm64.pkg) removes the program and administrator helper,
 after quitting the bridge. It preserves the private Wine prefix and account data.
 The app has an ad-hoc signature. The `.pkg` installers are unsigned, and the
 build is not notarized. Do not disable system-wide security settings to install it.

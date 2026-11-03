@@ -1,0 +1,71 @@
+{
+  "release": "v0.4.1-alpha.1",
+  "status": "experimental",
+  "scope": "Mac Dock identity, dashboard restoration and window animations",
+  "mac_bridge_tests": {"passed": 47},
+  "shared_installer_tests": {"passed": 13},
+  "mac_distribution_tests": {"passed": 5},
+  "source_audit_tests": {"passed": 4},
+  "native_rendering_regression": {
+    "result": "passed",
+    "uses_actual_patched_Wine_drawing_methods": true,
+    "checks": [
+      "cropped_1440x810_image_from_padded_1536x896_buffer",
+      "full_size_restore",
+      "input_transparent_overlay",
+      "overlay_cleanup"
+    ]
+  },
+  "packaged_payload": {
+    "version": "0.4.1",
+    "architecture": "arm64",
+    "app_signature": "ad_hoc_verified",
+    "native_module_signature": "ad_hoc_verified",
+    "installer_signature": "unsigned_not_notarized",
+    "embedded_source_matches_repository": true,
+    "clean_stock_driver_install": "passed",
+    "original_driver_backup": "passed",
+    "repeat_launch": "passed",
+    "recorded_previous_driver_upgrade": "unit_test_passed",
+    "interrupted_upgrade_recovery": "unit_test_passed",
+    "unknown_modified_driver": "preserved",
+    "update_while_bridge_running": "rejected_by_preinstall"
+  },
+  "window_driver": {
+    "wine_version": "11.17",
+    "source_commit": "36b6a2cf679fb395f668a917b76537190e212d9c",
+    "original_sha256": "3cd98d22cd49b91db65d86defa6399c36265033edffec7cbe1e18c1ad50ea6be",
+    "patched_sha256": "81f1e2bba8f8139e6810092601d51b0562b657f42fd11778671ba6321e725889",
+    "patch_sha256": "daf813c334c9199d314810d87bba5ec52ba118305ce9d3f10f369091e512361f"
+  },
+  "privacy": {
+    "expanded_payload_files_checked": 1718,
+    "personal_home_path_matches": 0,
+    "corresponding_Wine_source_files_checked": 12464,
+    "corresponding_source_personal_home_path_matches": 0,
+    "source_archive_paths_and_ownership": "normalized",
+    "official_client_bundled": false,
+    "vendor_icon_bundled": false,
+    "configured_user_prefix_used_for_build": false
+  },
+  "manual_window_validation": {
+    "platform": "Apple_Silicon_macOS_27.2",
+    "client_version": "5.23.3",
+    "maintainer_confirmed": [
+      "ExitLag_Dock_name_and_icon",
+      "dashboard_restore",
+      "window_image_during_animation",
+      "no_restore_size_jump"
+    ]
+  },
+  "gameplay_retested_for_this_window_update": false,
+  "previous_gameplay_evidence": "v0.4.0-alpha.2-validation.json",
+  "linux_binaries": "unchanged_v0.4.0-alpha.2",
+  "limitations": [
+    "Apple_Silicon_binary_only",
+    "Mac_routing_is_WoW_specific_IPv4_TCP",
+    "Forever_world_entry_not_tested",
+    "sleep_reboot_recovery_not_validated",
+    "no_new_other_game_compatibility_claim"
+  ]
+}

@@ -27,15 +27,17 @@ root="$payload/Library/PrivilegedHelperTools/local.cheaux.ExitLagRouting"
 rm -rf "$here/build" "$here/package"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/bridge/build" "$payload/Applications" "$root" "$payload/Library/LaunchDaemons" "$here/package/scripts"
 python3 "$source/../installers/build_runtime.py" python --arch "$(uname -m)" --output "$root/python"
+python3 "$source/build-window-driver.py" --output "$app/Contents/Resources/bridge/window-driver"
 /usr/bin/xcrun swiftc -target "$(uname -m)-apple-macos15.0" -O -parse-as-library "$here/ExitLag.swift" -o "$app/Contents/MacOS/ExitLag"
 /usr/bin/xcrun swift "$here/make-icon.swift" "$here/build/BridgeIcon.iconset"
 /usr/bin/iconutil -c icns "$here/build/BridgeIcon.iconset" -o "$app/Contents/Resources/BridgeIcon.icns"
-for file in entry.py setup_worker.py auto_agent.py auto_common.py bridge.py wine_socket.py companion.py games.auto.map; do
+for file in entry.py setup_worker.py auto_agent.py auto_common.py bridge.py wine_socket.py companion.py client_app.py client_entry.py client_icon.py window_driver.py games.auto.map; do
   /bin/cp "$source/$file" "$app/Contents/Resources/bridge/$file"
 done
 /bin/cp "$source/../installers/payloads/WowClassic.exe" "$app/Contents/Resources/bridge/build/WowClassic.exe"
 /usr/bin/ditto "$source/../installers/bridge_setup" "$app/Contents/Resources/bridge/bridge_setup"
 /usr/bin/ditto "$source/../installers/payloads" "$app/Contents/Resources/bridge/payloads"
+/bin/chmod 644 "$app/Contents/Resources/bridge/payloads/manifest.json"
 /usr/bin/ditto "$source/../LICENSES" "$app/Contents/Resources/LICENSES"
 /bin/cp "$source/../LICENSE" "$source/../THIRD_PARTY.md" "$app/Contents/Resources/"
 mkdir -p "$app/Contents/Resources/docs"
@@ -50,8 +52,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>ExitLag Bridge</string>
 <key>CFBundleDisplayName</key><string>ExitLag Bridge</string>
 <key>CFBundleIconFile</key><string>BridgeIcon</string>
-<key>CFBundleVersion</key><string>4</string>
-<key>CFBundleShortVersionString</key><string>0.4</string>
+<key>CFBundleVersion</key><string>40101</string>
+<key>CFBundleShortVersionString</key><string>0.4.1</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>LSMultipleInstancesProhibited</key><true/>
 <key>LSUIElement</key><true/>
@@ -83,6 +85,9 @@ cat > "$here/package/scripts/preinstall" <<'PRE'
 #!/bin/bash
 set -euo pipefail
 if [ "${3:-/}" != / ]; then echo 'Install on the startup volume.' >&2; exit 1; fi
+if /usr/bin/pgrep -f '^/Applications/ExitLag Bridge.app/Contents/MacOS/ExitLag' >/dev/null; then
+  echo 'Quit ExitLag Bridge before updating; this preserves active game connections.' >&2; exit 1
+fi
 install_uid="$(/usr/bin/stat -f %u /dev/console)"
 if ! [[ "$install_uid" =~ ^[0-9]+$ ]] || [ "$install_uid" -lt 500 ]; then
   echo 'Install while signed into the Mac as the game user.' >&2; exit 1
@@ -131,7 +136,7 @@ fi
 /usr/bin/pkgbuild --analyze --root "$payload" "$here/package/components.plist"
 /usr/libexec/PlistBuddy -c 'Add :0:BundleIsRelocatable bool false' "$here/package/components.plist"
 /usr/libexec/PlistBuddy -c 'Set :0:BundleIsVersionChecked false' "$here/package/components.plist"
-build_package --root "$payload" --component-plist "$here/package/components.plist" --scripts "$here/package/scripts" --identifier local.cheaux.ExitLagMac.Setup --version 0.4 --install-location / "$out/ExitLag Mac Setup.pkg"
+build_package --root "$payload" --component-plist "$here/package/components.plist" --scripts "$here/package/scripts" --identifier local.cheaux.ExitLagMac.Setup --version 0.4.1 --install-location / "$out/ExitLag Mac Setup.pkg"
 /usr/bin/ditto "$payload/Applications/ExitLag Bridge.app" "$out/ExitLag Bridge.app"
 mkdir -p "$here/package/uninstall"
 cat > "$here/package/uninstall/preinstall" <<'UNINSTALL'
@@ -159,7 +164,7 @@ if [ -d "$app" ]; then /bin/rm -rf "$app"; fi
 echo 'ExitLag Bridge was removed. Your account data and private Wine environment were preserved.'
 UNINSTALL
 chmod 755 "$here/package/uninstall/preinstall"
-build_package --nopayload --scripts "$here/package/uninstall" --identifier local.cheaux.ExitLagMac.Uninstall --version 0.4 "$out/ExitLag Bridge Uninstall.pkg"
+build_package --nopayload --scripts "$here/package/uninstall" --identifier local.cheaux.ExitLagMac.Uninstall --version 0.4.1 "$out/ExitLag Bridge Uninstall.pkg"
 
 if [ -n "$notary_profile" ]; then
   python3 "$here/notarize.py" --profile "$notary_profile" "$out/ExitLag Mac Setup.pkg" "$out/ExitLag Bridge Uninstall.pkg"

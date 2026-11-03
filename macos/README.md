@@ -4,6 +4,24 @@ An unofficial compatibility bridge for the official ExitLag Windows client, usin
 
 Opening **ExitLag Bridge.app** opens the actual ExitLag dashboard. The bridge runs in the menu bar; its status window stays hidden until **Show routing status** is selected. The launcher has an original icon and does not redistribute vendor branding assets.
 
+The official client runs inside a generated, private `ExitLag.app` wrapper, so
+macOS labels its Dock icon **ExitLag**. Reopening that app or choosing **Show
+ExitLag dashboard** in the bridge menu restores its minimized window through
+macOS. Qt uses the client's bundled software OpenGL renderer to avoid the black
+Vulkan surface seen after Dock restore. This affects the dashboard, not the game.
+The wrapper's icon is extracted locally from the installed official client;
+no vendor icon is distributed in the bridge.
+
+The native Wine driver patch in
+[`wine-patches/0001-preserve-exitlag-cropped-window-frame.patch`](wine-patches/0001-preserve-exitlag-cropped-window-frame.patch)
+retains the masked, cropped window image during the Dock animation and fits the
+temporary image to the viewport on restore. Capturing Wine's whole backing
+buffer would include padding and briefly show a smaller picture. The installer
+bundles the rebuilt driver and applies it automatically when the private runtime
+matches the pinned build, including upgrades from an earlier recorded correction.
+The original module is backed up. Unrecognized Wine modifications are preserved.
+Live window testing used Wine 11.17 and ExitLag 5.23.3.
+
 ## Compatibility
 
 | Game | Evidence | Scope |
@@ -54,10 +72,28 @@ The app build creates a signed-local app and installer in `macos/app/dist`. It d
 
 ```sh
 cd macos
-python3 -m unittest -v test_bridge.py test_pf_plan.py test_session_control.py test_wine_socket.py test_recover.py test_auto_launcher.py
+python3 -m unittest -v test_bridge.py test_pf_plan.py test_session_control.py test_wine_socket.py test_recover.py test_auto_launcher.py test_client_app.py test_window_driver.py
 ```
 
-The current 32 local checks cover real loopback data transfer, the shim protocol, source-tuple preservation, authentication, private configuration checks, both game identities, companion restart handling, fallback, PF scope and recovery validation. They do not replace live game testing.
+The current 47 local checks cover real loopback data transfer, the shim protocol, source-tuple preservation, authentication, private configuration checks, both game identities, companion restart handling, fallback, PF scope, recovery, the generated client app, and atomic window-driver upgrades. They do not replace live game testing.
+
+`python3 -m unittest -v test_client_app.py` checks the generated app's identity,
+private configuration, preservation of unrelated apps, and refusal of links that
+could overwrite unrelated files. These checks do not replace a live dashboard
+minimize/restore test on macOS.
+
+The native rendering regression check uses hidden AppKit windows and the actual
+patched Wine drawing methods. It checks a padded backing buffer, full-size
+restore, input transparency, and removal of the temporary image:
+
+```sh
+python3 test_native_window_snapshot.py \
+  --wine-source ../build/installer/wine-source/wine-wine-11.17
+```
+
+It requires macOS, Xcode command-line tools, and the unmodified pinned Wine
+source already downloaded by the payload build. It does not use an ExitLag
+account, run Wine, or capture the desktop.
 
 The command-line foreground launchers remain available for diagnostics; do not run them concurrently with the installed app. See the repository's Linux README for Linux installation and testing.
 
