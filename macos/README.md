@@ -30,6 +30,10 @@ Before opening the dashboard or starting a game companion, the launcher waits
 for a built-in Wine command to complete the prefix's normal service startup.
 This lets the official client restore its own saved session on a cold start;
 the bridge never reads or re-enters account credentials.
+If the official client records a crash during its first two minutes, the
+launcher retries up to twice while preserving the runtime and saved session.
+It checks only crash-file metadata and the dump signature. Normal quits do
+not restart the client; failed startup attempts remain an explicit error.
 
 The native Wine driver patch in
 [`wine-patches/0001-preserve-exitlag-cropped-window-frame.patch`](wine-patches/0001-preserve-exitlag-cropped-window-frame.patch)

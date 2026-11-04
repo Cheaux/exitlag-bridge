@@ -74,7 +74,7 @@ def alive(pid):
 
 
 def client_pids(executable):
-    listing = subprocess.check_output(['/bin/ps', '-ww', '-axo', 'pid=,uid=,args='], text=True)
+    listing = subprocess.check_output(['/bin/ps', '-ww', '-axo', 'pid=,uid=,args='], text=True, timeout=5)
     result = []
     for line in listing.splitlines():
         parts = line.strip().split(None, 2)
@@ -82,6 +82,62 @@ def client_pids(executable):
             if parts[2] == str(executable) or parts[2].startswith(str(executable) + ' '):
                 result.append(int(parts[0]))
     return result
+
+
+def client_crash_reports(state):
+    """Identify client crash reports by metadata and signature, never payload."""
+    users = Path(state) / 'prefix/drive_c/users'
+    reports = set()
+    if users.is_symlink():
+        return reports
+    for path in users.glob('*/AppData/Local/ExitLag/crashpad/reports/*.dmp'):
+        if any(parent.is_symlink() for parent in path.parents if users in parent.parents):
+            continue
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, 'rb') as stream:
+                info = os.fstat(stream.fileno())
+                if (stat.S_ISREG(info.st_mode) and info.st_uid == os.getuid()
+                        and info.st_nlink == 1 and info.st_size >= 32
+                        and stream.read(4) == b'MDMP'):
+                    reports.add((path, info.st_ino, info.st_mtime_ns, info.st_size))
+        except OSError:
+            pass
+    return reports
+
+
+class ClientStartup:
+    """Retry confirmed early crashes, while allowing deliberate quits to close."""
+    def __init__(self, state, clock=time.monotonic):
+        self.state, self.clock = state, clock
+        self.reports = client_crash_reports(state)
+        self.first_launch = self.attempt_started = self.last_seen = None
+        self.retries = 0
+
+    def launched(self):
+        self.attempt_started = self.clock()
+        if self.first_launch is None:
+            self.first_launch = self.attempt_started
+        self.last_seen = None
+
+    def observe(self, pids):
+        now = self.clock()
+        if pids:
+            self.last_seen = now
+            return 'running'
+        # Allow a short process handoff and time for Crashpad to finish writing.
+        since = self.last_seen if self.last_seen is not None else self.attempt_started
+        grace = 3 if self.last_seen is not None else 20
+        if now - since < grace:
+            return 'starting'
+        new_reports = client_crash_reports(self.state) - self.reports
+        self.reports.update(new_reports)
+        if new_reports:
+            if now - self.first_launch <= 120 and self.retries < 2:
+                self.retries += 1
+                return 'retry'
+            return 'failed'
+        return 'closed' if self.last_seen is not None else 'failed'
 
 
 def stop_clients(executable):
@@ -181,7 +237,7 @@ def main():
     log_fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
     os.fchmod(log_fd, 0o600)
     log = os.fdopen(log_fd, 'ab', buffering=0)
-    launched_at = None
+    startup = ClientStartup(STATE)
     lease = Lease(args.parent)
     try:
         while not STOPPING and alive(args.parent):
@@ -204,11 +260,28 @@ def main():
                     # Restart only this prefix's exact official client once.
                     stop_clients(executable)
                     client = start_client(executable, log)
-                    launched_at = time.monotonic()
+                    startup.launched()
                     lease.enabled = True
-                pids = client_pids(executable)
+                try:
+                    pids = client_pids(executable)
+                except subprocess.SubprocessError:
+                    # A failed process scan is not evidence that the client quit.
+                    if STOPPING:
+                        break
+                    time.sleep(.5)
+                    continue
                 client_pid = pids[0] if pids else None
-                if not pids and time.monotonic() - launched_at > 20:
+                action = startup.observe(pids)
+                if action == 'retry':
+                    publish_status(dict(stage='starting', message='Retrying ExitLag startup', updated_at=time.time()))
+                    print('ExitLag startup crash detected; retry %d/2' % startup.retries, flush=True)
+                    client = start_client(executable, log)
+                    startup.launched()
+                    continue
+                if action == 'failed':
+                    publish_status(dict(stage='error', message='ExitLag could not finish starting. Open it again to retry.', updated_at=time.time()))
+                    raise RuntimeError('ExitLag did not stay open during startup')
+                if action == 'closed':
                     stage, message = 'closed', 'ExitLag is closed. Ordinary routing is active.'
                     publish_status(dict(stage=stage, message=message, updated_at=time.time()))
                     break

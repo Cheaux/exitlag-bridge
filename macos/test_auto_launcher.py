@@ -1,6 +1,7 @@
 """Automatic launcher boundaries and actual loopback companion reloading."""
 import contextlib
 import fcntl
+import json
 import os
 from pathlib import Path
 import secrets
@@ -67,6 +68,115 @@ class Records(unittest.TestCase):
                 c.read_private(path, os.getuid())
 
 class Lifecycle(unittest.TestCase):
+    def test_launcher_reopens_a_crashed_client_without_restarting_the_lease(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder)
+            report = state / 'prefix/drive_c/users/example/AppData/Local/ExitLag/crashpad/reports/new.dmp'
+            report.parent.mkdir(parents=True)
+            executable = state / 'prefix/drive_c/ExitLag/ExitLag.exe'
+            now = [0]
+            startup = agent.ClientStartup(state, clock=lambda: now[0])
+            scans = [0]
+            def scan(_):
+                scans[0] += 1
+                if scans[0] == 1:
+                    return [1234]
+                if scans[0] == 2:
+                    report.write_bytes(b'MDMP' + bytes(28))
+                    return []
+                agent.STOPPING = True
+                return [5678]
+            def advance(_):
+                now[0] += 4
+            service_status = dict(stage='waiting_client', message='Waiting', updated_at=time.time())
+            with mock.patch.object(agent, 'STATE', state), \
+                    mock.patch.object(agent, 'STOPPING', False), \
+                    mock.patch.object(sys, 'argv', ['auto_agent', '--parent', '9999']), \
+                    mock.patch.object(agent, 'alive', return_value=True), \
+                    mock.patch.object(agent.signal, 'signal'), \
+                    mock.patch.object(agent, 'load_identities', return_value={}), \
+                    mock.patch.object(agent, 'NativeIdentity'), \
+                    mock.patch.object(agent, 'native_pids', return_value={}), \
+                    mock.patch.object(agent, 'legacy_active', return_value=False), \
+                    mock.patch.object(agent, 'read_private', return_value=(service_status, None)), \
+                    mock.patch.object(agent, 'Lease') as lease, \
+                    mock.patch.object(agent, 'ClientStartup', return_value=startup), \
+                    mock.patch.object(agent, 'client_pids', side_effect=scan), \
+                    mock.patch.object(agent, 'stop_clients'), \
+                    mock.patch.object(agent, 'start_client') as launch, \
+                    mock.patch.object(agent.time, 'sleep', side_effect=advance), \
+                    mock.patch('bridge_setup.core.find_client', return_value=executable):
+                agent.main()
+            self.assertEqual(launch.call_count, 2)
+            lease.assert_called_once_with(9999)
+            lease.return_value.close.assert_called_once()
+            self.assertEqual(json.loads((state / 'launcher-status.json').read_text())['client_pid'], 5678)
+
+    def test_confirmed_startup_crashes_retry_with_a_limit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder)
+            reports = state / 'prefix/drive_c/users/example/AppData/Local/ExitLag/crashpad/reports'
+            reports.mkdir(parents=True)
+            now = [0]
+            startup = agent.ClientStartup(state, clock=lambda: now[0])
+            for attempt in range(3):
+                startup.launched()
+                self.assertEqual(startup.observe([1234]), 'running')
+                (reports / ('crash-%d.dmp' % attempt)).write_bytes(b'MDMP' + bytes(28))
+                now[0] += 1
+                self.assertEqual(startup.observe([]), 'starting')
+                now[0] += 3
+                self.assertEqual(startup.observe([]), 'retry' if attempt < 2 else 'failed')
+            self.assertEqual(startup.retries, 2)
+
+    def test_normal_quit_with_old_reports_does_not_restart(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder)
+            report = state / 'prefix/drive_c/users/example/AppData/Local/ExitLag/crashpad/reports/old.dmp'
+            report.parent.mkdir(parents=True)
+            report.write_bytes(b'MDMP' + bytes(28))
+            now = [0]
+            startup = agent.ClientStartup(state, clock=lambda: now[0])
+            startup.launched()
+            startup.observe([1234])
+            now[0] = 4
+            self.assertEqual(startup.observe([]), 'closed')
+            self.assertEqual(startup.retries, 0)
+
+    def test_missing_dashboard_is_a_startup_failure_instead_of_a_quit(self):
+        with tempfile.TemporaryDirectory() as folder:
+            now = [0]
+            startup = agent.ClientStartup(Path(folder), clock=lambda: now[0])
+            startup.launched()
+            now[0] = 19
+            self.assertEqual(startup.observe([]), 'starting')
+            now[0] = 21
+            self.assertEqual(startup.observe([]), 'failed')
+
+    def test_crash_recovery_is_limited_to_initial_startup(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder)
+            now = [0]
+            startup = agent.ClientStartup(state, clock=lambda: now[0])
+            startup.launched()
+            startup.observe([1234])
+            report = state / 'prefix/drive_c/users/example/AppData/Local/ExitLag/crashpad/reports/late.dmp'
+            report.parent.mkdir(parents=True)
+            report.write_bytes(b'MDMP' + bytes(28))
+            now[0] = 121
+            self.assertEqual(startup.observe([]), 'failed')
+
+    def test_crash_report_links_and_non_dump_files_are_ignored(self):
+        with tempfile.TemporaryDirectory() as folder:
+            state = Path(folder)
+            reports = state / 'prefix/drive_c/users/example/AppData/Local/ExitLag/crashpad/reports'
+            reports.mkdir(parents=True)
+            outside = state / 'unrelated'
+            outside.write_bytes(b'MDMP' + bytes(28))
+            (reports / 'linked.dmp').symlink_to(outside)
+            (reports / 'text.dmp').write_bytes(b'not a crash report' + bytes(32))
+            self.assertEqual(agent.client_crash_reports(state), set())
+
     def test_runtime_initialization_finishes_before_dashboard_launch(self):
         executable = Path('/private/test/prefix/drive_c/ExitLag/ExitLag.exe')
         order = []

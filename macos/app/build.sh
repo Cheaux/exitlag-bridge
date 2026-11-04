@@ -69,7 +69,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleName</key><string>ExitLag Bridge</string>
 <key>CFBundleDisplayName</key><string>ExitLag Bridge</string>
 <key>CFBundleIconFile</key><string>BridgeIcon</string>
-<key>CFBundleVersion</key><string>40109</string>
+<key>CFBundleVersion</key><string>40110</string>
 <key>CFBundleShortVersionString</key><string>0.4.1</string>
 <key>LSMinimumSystemVersion</key><string>15.0</string>
 <key>LSMultipleInstancesProhibited</key><true/>
