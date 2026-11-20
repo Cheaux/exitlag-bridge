@@ -80,6 +80,7 @@ the official dashboard directly and keeps optional status in the menu bar.
 | Minecraft Java Edition | Native Linux | Unstable | Traffic was relayed, but sessions disconnected; not considered working gameplay. |
 | Dota 2 | Native Linux | Detection only | Game/UDP traffic recognized; relay steering was not established. |
 | Tibia | Native Linux | Detection only | In-world flows recognized; no redirect was supplied in the recorded test. |
+| PEAK | Arch Linux / Proton Experimental | Community report — relay unverified | AlexYT18 reported detection, UDP callbacks and lobby creation in his modified fork on November 5, 2026. The observed game-server flow passed through unchanged. [Report](https://github.com/AlexYT18/ExitLag-bridge/pull/1#issuecomment-6654023267). |
 | Other games | Linux / macOS | Untested | Community reports and pull requests are welcome. |
 
 These are the recorded results, not a guarantee for every OS, client build or

@@ -17,6 +17,7 @@ certification.
 | Minecraft Java Edition | Native Linux | Unstable | Traffic was relayed, but sessions disconnected; not considered working gameplay. |
 | Dota 2 | Native Linux | Detection only | Game/UDP traffic recognized; relay steering was not established. |
 | Tibia | Native Linux | Detection only | In-world flows recognized; no redirect was supplied in the recorded test. |
+| PEAK | Arch Linux / Proton Experimental | Community report — relay unverified | AlexYT18 reported detection, UDP callbacks and lobby creation in his modified fork on November 5, 2026. The observed game-server flow passed through unchanged. [Report](https://github.com/AlexYT18/ExitLag-bridge/pull/1#issuecomment-6654023267). |
 | Other games | Linux / macOS | Untested | Community reports and pull requests are welcome. |
 
 **Arch Linux is the maintainer's verified Linux gameplay platform.** The
@@ -35,6 +36,23 @@ Minecraft, Dota 2 and Tibia results come from earlier native Linux experiments.
 Their source reports establish the scope above, not current-version support.
 The Minecraft tests carried real relay traffic and then disconnected; detection
 or byte counters alone must not be relabelled as working gameplay.
+
+## Community report — PEAK on AlexYT18’s fork
+
+On November 5, 2026, AlexYT18 reported a local test on Arch Linux x86_64,
+kernel 6.18.60-1-lts, Steam / Proton Experimental and ExitLag 5.24.0. The test
+used his modified fork, build `0.4.0+arch.1` at
+`f1a957cbff08d1e60969dd8425e57318c8c2088c`, with experimental UDP enabled.
+
+He reported detection of PEAK (Steam AppID `3527290`), real UDP callbacks,
+main-menu access and network-lobby creation. His inspected log showed an applied
+`nf_udpPostSend` for one UDP flow. The game-server flow on UDP/5055 passed through
+unchanged in both directions. Bidirectional gameplay through ExitLag’s relay,
+co-op play, long-session stability and reconnect remain unverified. This report
+applies to Alex’s fork and has not been reproduced with this project’s release.
+[Read Alex’s original report](https://github.com/AlexYT18/ExitLag-bridge/pull/1#issuecomment-6654023267).
+
+## Platform scope and further testing
 
 Mac live-game testing used Apple Silicon, macOS 27.2 and Wine 11.17 Staging.
 The current Mac adapter recognizes Classic Era and Forever at the standard WoW
